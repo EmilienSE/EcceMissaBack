@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\FeuilletRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: FeuilletRepository::class)]
@@ -21,6 +22,13 @@ class Feuillet
 
     #[ORM\ManyToOne(inversedBy: 'feuillets')]
     private ?Eglise $Eglise = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    private ?\DateTimeInterface $celebrationDate = null;
+
+    #[ORM\ManyToOne(inversedBy: 'feuillets')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Paroisse $paroisse = null;
 
     public function getId(): ?int
     {
@@ -59,6 +67,30 @@ class Feuillet
     public function setEglise(?Eglise $Eglise): static
     {
         $this->Eglise = $Eglise;
+
+        return $this;
+    }
+
+    public function getCelebrationDate(): ?\DateTimeInterface
+    {
+        return $this->celebrationDate;
+    }
+
+    public function setCelebrationDate(\DateTimeInterface $celebrationDate): static
+    {
+        $this->celebrationDate = $celebrationDate;
+
+        return $this;
+    }
+
+    public function getParoisse(): ?Paroisse
+    {
+        return $this->paroisse;
+    }
+
+    public function setParoisse(?Paroisse $paroisse): static
+    {
+        $this->paroisse = $paroisse;
 
         return $this;
     }

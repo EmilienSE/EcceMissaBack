@@ -36,10 +36,17 @@ class Paroisse
     #[ORM\OneToMany(targetEntity: Utilisateur::class, mappedBy: 'paroisse')]
     private Collection $Responsable;
 
+    /**
+     * @var Collection<int, Feuillet>
+     */
+    #[ORM\OneToMany(targetEntity: Feuillet::class, mappedBy: 'paroisse', orphanRemoval: true)]
+    private Collection $feuillets;
+
     public function __construct()
     {
         $this->eglises = new ArrayCollection();
         $this->Responsable = new ArrayCollection();
+        $this->feuillets = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -137,6 +144,36 @@ class Paroisse
             // set the owning side to null (unless already changed)
             if ($responsable->getParoisse() === $this) {
                 $responsable->setParoisse(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Feuillet>
+     */
+    public function getFeuillets(): Collection
+    {
+        return $this->feuillets;
+    }
+
+    public function addFeuillet(Feuillet $feuillet): static
+    {
+        if (!$this->feuillets->contains($feuillet)) {
+            $this->feuillets->add($feuillet);
+            $feuillet->setParoisse($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFeuillet(Feuillet $feuillet): static
+    {
+        if ($this->feuillets->removeElement($feuillet)) {
+            // set the owning side to null (unless already changed)
+            if ($feuillet->getParoisse() === $this) {
+                $feuillet->setParoisse(null);
             }
         }
 
