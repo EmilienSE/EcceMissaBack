@@ -45,11 +45,9 @@ class EgliseController extends AbstractController
     #[Route('/api/eglise', name: 'add_eglise', methods: ['POST'])]
     public function addEglise(Request $request, UserInterface $user): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-
-        $nom = $data['nom'] ?? null;
-        $gps = $data['gps'] ?? null;
-        $paroisseId = $data['paroisse_id'] ?? null;
+        $nom = $request->request->get('nom') ?? null;
+        $gps = $request->request->get('gps') ?? null;
+        $paroisseId = $request->request->get('paroisse_id') ?? null;
 
         if (empty($nom) || empty($gps) || empty($paroisseId)) {
             return new JsonResponse(['error' => 'Invalid data'], 400);

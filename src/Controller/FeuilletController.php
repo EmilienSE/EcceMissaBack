@@ -46,27 +46,30 @@ class FeuilletController extends AbstractController
     #[Route('/api/feuillet', name: 'add_feuillet', methods: ['POST'])]
     public function addFeuillet(Request $request, UserInterface $user): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        $egliseId = $request->request->get('eglise_id') ?? null;
+        $celebrationDate = $request->request->get('celebration_date') ?? null;
+        $paroisseId = $request->request->get('paroisse_id') ?? null;
 
-        $egliseId = $data['eglise_id'] ?? null;
-        $celebrationDate = $data['celebration_date'] ?? null;
-        $paroisseId = $data['paroisse_id'] ?? null;
-
-        if (empty($egliseId) || empty($celebrationDate) || empty($paroisseId)) {
+        if (!isset($egliseId) || !isset($celebrationDate) || !isset($paroisseId)) {
             return new JsonResponse(['error' => 'Invalid data'], 400);
         }
 
-        $eglise = $this->entityManager->getRepository(Eglise::class)->find($egliseId);
+        $file = $request->files->get('feuillet');
+
+        if(!$file){
+            return new JsonResponse(['error' => 'File not provided'], 400);
+        }
+
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
 
-        if (!$eglise || !$paroisse) {
+        if (!$paroisse) {
             return new JsonResponse(['error' => 'Church or Parish not found'], 404);
         }
 
         $feuillet = new Feuillet();
         $feuillet->setUtilisateur($user);
-        $feuillet->setEglise($eglise);
         $feuillet->setParoisse($paroisse);
+        $feuillet->setDescription('');
         $feuillet->setCelebrationDate(new \DateTime($celebrationDate));
 
         $this->entityManager->persist($feuillet);

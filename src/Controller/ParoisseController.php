@@ -46,11 +46,9 @@ class ParoisseController extends AbstractController
     #[Route('/api/paroisse', name: 'add_paroisse', methods: ['POST'])]
     public function addParoisse(Request $request, UserInterface $user): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-
-        $nom = $data['nom'] ?? null;
-        $gps = $data['gps'] ?? null;
-        $dioceseId = $data['diocese_id'] ?? null;
+        $nom = $request->request->get('nom') ?? null;
+        $gps = $request->request->get('gps') ?? null;
+        $dioceseId = $request->request->get('diocese_id') ?? null;
 
         if (empty($nom) || empty($gps) || empty($dioceseId)) {
             return new JsonResponse(['error' => 'Invalid data'], 400);
