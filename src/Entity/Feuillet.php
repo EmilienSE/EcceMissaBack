@@ -30,6 +30,9 @@ class Feuillet
     #[ORM\JoinColumn(nullable: false)]
     private ?Paroisse $paroisse = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $fileUrl = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -91,6 +94,18 @@ class Feuillet
     public function setParoisse(?Paroisse $paroisse): static
     {
         $this->paroisse = $paroisse;
+
+        return $this;
+    }
+
+    public function getFileUrl(): ?string
+    {
+        return $this->fileUrl;
+    }
+
+    public function setFileUrl(?string $fileUrl): self
+    {
+        $this->fileUrl = $fileUrl;
 
         return $this;
     }

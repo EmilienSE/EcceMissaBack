@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Eglise;
 use App\Entity\Feuillet;
 use App\Entity\Paroisse;
+use Aws\S3\S3Client;
 use App\Repository\FeuilletRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -37,6 +38,7 @@ class FeuilletController extends AbstractController
                 'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
                 'eglise' => $feuillet->getEglise() ? $feuillet->getEglise()->getId() : null,
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
+                'fileUrl' => $feuillet->getFileUrl()
             ];
         }
 
@@ -65,12 +67,41 @@ class FeuilletController extends AbstractController
         if (!$paroisse) {
             return new JsonResponse(['error' => 'Church or Parish not found'], 404);
         }
+        
+        // Configuration du client S3
+        $s3Client = new S3Client([
+            'version' => 'latest',
+            'region' => $_ENV['S3_REGION'],
+            'credentials' => [
+                'key' => $_ENV['S3_KEY'],
+                'secret' => $_ENV['S3_SECRET'],
+            ],
+            'endpoint' => 'https://s3.' . $_ENV['S3_REGION'] . '.io.cloud.ovh.net', // Assurez-vous de définir le bon endpoint OVH
+        ]);
+
+        // Génération d'un nom de fichier unique pour éviter les conflits
+        $filename = uniqid() . '.' . $file->guessExtension();
+
+        // Téléchargement du fichier sur S3
+        try {
+            $result = $s3Client->putObject([
+                'Bucket' => $_ENV['S3_BUCKET'],
+                'Key' => $filename,
+                'SourceFile' => $file->getPathname(),
+                'ACL' => 'public-read', // Si vous voulez que le fichier soit public
+            ]);
+
+            $fileUrl = $result['ObjectURL']; // Récupération de l'URL du fichier
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => 'File upload failed: ' . $e->getMessage()], 500);
+        }
 
         $feuillet = new Feuillet();
         $feuillet->setUtilisateur($user);
         $feuillet->setParoisse($paroisse);
         $feuillet->setDescription('');
         $feuillet->setCelebrationDate(new \DateTime($celebrationDate));
+        $feuillet->setFileUrl($fileUrl); // Enregistrement de l'URL du fichier dans la base de données
 
         $this->entityManager->persist($feuillet);
         $this->entityManager->flush();
