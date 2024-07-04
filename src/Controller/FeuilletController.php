@@ -10,9 +10,12 @@ use App\Repository\FeuilletRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use GuzzleHttp\Client;
 
 class FeuilletController extends AbstractController
 {
@@ -217,5 +220,36 @@ class FeuilletController extends AbstractController
         }
 
         return new JsonResponse($data);
+    }
+
+    #[Route('/feuillet/{id}/pdf', name: 'show_feuillet_pdf', methods: ['GET'])]
+    public function showFeuilletPdf(int $id): Response
+    {
+        $feuillet = $this->entityManager->getRepository(Feuillet::class)->find($id);
+
+        if (!$feuillet || !$feuillet->getFileUrl()) {
+            throw new NotFoundHttpException('Feuillet not found or file URL is missing');
+        }
+
+        $fileUrl = $feuillet->getFileUrl();
+
+        // Incrémenter le compteur de vues
+        $feuillet->incrementViewCount();
+        $this->entityManager->persist($feuillet);
+        $this->entityManager->flush();
+
+        $client = new Client();
+        try {
+            $response = $client->get($fileUrl);
+        } catch (\Exception $e) {
+            throw new NotFoundHttpException('File not found');
+        }
+
+        $pdfContent = $response->getBody()->getContents();
+
+        return new Response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="feuillet.pdf"',
+        ]);
     }
 }

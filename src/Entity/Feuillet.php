@@ -33,6 +33,9 @@ class Feuillet
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $fileUrl = null;
 
+    #[ORM\Column(type: Types::INTEGER)]
+    private ?int $viewCount = 0;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -107,6 +110,17 @@ class Feuillet
     {
         $this->fileUrl = $fileUrl;
 
+        return $this;
+    }
+
+    public function getViewCount(): int
+    {
+        return $this->viewCount;
+    }
+
+    public function incrementViewCount(): self
+    {
+        $this->viewCount++;
         return $this;
     }
 }
