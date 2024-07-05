@@ -43,9 +43,7 @@ class DioceseController extends AbstractController
     #[Route('/api/diocese', name: 'add_diocese', methods: ['POST'])]
     public function addDiocese(Request $request, UserInterface $user): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-
-        $nom = $data['nom'] ?? null;
+        $nom = $request->request->get('nom') ?? null;
 
         if (empty($nom)) {
             return new JsonResponse(['error' => 'Invalid data'], 400);
@@ -70,9 +68,7 @@ class DioceseController extends AbstractController
             return new JsonResponse(['error' => 'Diocese not found'], 404);
         }
 
-        $data = json_decode($request->getContent(), true);
-
-        $nom = $data['nom'] ?? null;
+        $nom = $request->request->get('nom') ?? null;
 
         if ($nom) {
             $diocese->setNom($nom);
@@ -97,7 +93,7 @@ class DioceseController extends AbstractController
             return new JsonResponse(['error' => 'Diocese not found'], 404);
         }
 
-        // Optional: Only allow the responsible user to delete
+        // Only allow the responsible user to delete
         if ($diocese->getResponsable() !== $user) {
             return new JsonResponse(['error' => 'Unauthorized'], 403);
         }

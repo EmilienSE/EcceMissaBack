@@ -81,11 +81,9 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse not found'], 404);
         }
 
-        $data = json_decode($request->getContent(), true);
-
-        $nom = $data['nom'] ?? null;
-        $gps = $data['gps'] ?? null;
-        $dioceseId = $data['diocese_id'] ?? null;
+        $nom = $request->request->get('nom') ?? null;
+        $gps = $request->request->get('gps') ?? null;
+        $dioceseId = $request->request->get('diocese_id') ?? null;
 
         if ($nom) {
             $paroisse->setNom($nom);
@@ -118,7 +116,7 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse not found'], 404);
         }
 
-        // Optional: Check if the user is a responsible of the paroisse
+        // Check if the user is a responsible of the paroisse
         if (!$paroisse->getResponsable()->contains($user)) {
             return new JsonResponse(['error' => 'Unauthorized'], 403);
         }

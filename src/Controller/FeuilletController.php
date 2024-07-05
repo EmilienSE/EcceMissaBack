@@ -120,12 +120,10 @@ class FeuilletController extends AbstractController
         if (!$feuillet) {
             return new JsonResponse(['error' => 'Feuillet not found'], 404);
         }
-
-        $data = json_decode($request->getContent(), true);
-
-        $egliseId = $data['eglise_id'] ?? null;
-        $celebrationDate = $data['celebration_date'] ?? null;
-        $paroisseId = $data['paroisse_id'] ?? null;
+        
+        $egliseId = $request->request->get('eglise_id') ?? null;
+        $celebrationDate = $request->request->get('celebration_date') ?? null;
+        $paroisseId = $request->request->get('paroisse_id') ?? null;
 
         if ($egliseId) {
             $eglise = $this->entityManager->getRepository(Eglise::class)->find($egliseId);

@@ -80,11 +80,9 @@ class EgliseController extends AbstractController
             return new JsonResponse(['error' => 'Eglise not found'], 404);
         }
 
-        $data = json_decode($request->getContent(), true);
-
-        $nom = $data['nom'] ?? null;
-        $gps = $data['gps'] ?? null;
-        $paroisseId = $data['paroisse_id'] ?? null;
+        $nom = $request->request->get('nom') ?? null;
+        $gps = $request->request->get('gps') ?? null;
+        $paroisseId = $request->request->get('paroisse_id') ?? null;
 
         if ($nom) {
             $eglise->setNom($nom);
@@ -117,7 +115,7 @@ class EgliseController extends AbstractController
             return new JsonResponse(['error' => 'Eglise not found'], 404);
         }
 
-        // Optional: Check if the user is a responsible of the eglise
+        // Check if the user is a responsible of the eglise
         if (!$eglise->getResponsable()->contains($user)) {
             return new JsonResponse(['error' => 'Unauthorized'], 403);
         }
