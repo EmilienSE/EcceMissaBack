@@ -37,15 +37,15 @@ security:
             stateless: true
             jwt: ~
         refresh:
-            pattern:  ^/token/refresh
+            pattern:  ^/api/token/refresh
             stateless: true
 
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/token/refresh, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
-        - { path: ^/token/refresh, roles: PUBLIC_ACCESS }
 
 when@test:
     security:

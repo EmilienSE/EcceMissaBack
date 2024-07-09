@@ -40,10 +40,16 @@ class FeuilletController extends AbstractController
                 'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
                 'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
                 'eglise' => $feuillet->getEglise() ? $feuillet->getEglise()->getId() : null,
+                'egliseName' => $feuillet->getEglise() ? $feuillet->getEglise()->getNom() : null,
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
-                'fileUrl' => $feuillet->getFileUrl()
+                'fileUrl' => $feuillet->getFileUrl(),
+                'viewCount' => $feuillet->getViewCount()
             ];
         }
+        
+        usort($data, function ($a, $b) {
+            return strtotime($b['celebrationDate']) - strtotime($a['celebrationDate']);
+        });
 
         return new JsonResponse($data);
     }
@@ -66,11 +72,12 @@ class FeuilletController extends AbstractController
         }
 
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
+        $eglise = $this->entityManager->getRepository(Eglise::class)->find($egliseId);
 
-        if (!$paroisse) {
+        if (!$paroisse || !$eglise) {
             return new JsonResponse(['error' => 'Church or Parish not found'], 404);
         }
-        
+
         // Configuration du client S3
         $s3Client = new S3Client([
             'version' => 'latest',
@@ -101,6 +108,7 @@ class FeuilletController extends AbstractController
 
         $feuillet = new Feuillet();
         $feuillet->setUtilisateur($user);
+        $feuillet->setEglise($eglise);
         $feuillet->setParoisse($paroisse);
         $feuillet->setDescription('');
         $feuillet->setCelebrationDate(new \DateTime($celebrationDate));
