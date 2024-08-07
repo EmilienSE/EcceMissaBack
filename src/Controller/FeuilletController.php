@@ -193,10 +193,24 @@ class FeuilletController extends AbstractController
                 'endpoint' => 'https://s3.' . $_ENV['S3_REGION'] . '.io.cloud.ovh.net', // Assurez-vous de définir le bon endpoint OVH
             ]);
 
+            // Suppression de l'ancien fichier du stockage S3
+            try {
+                $oldFileUrl = $feuillet->getFileUrl();
+                if ($oldFileUrl) {
+                    $oldFilename = basename(parse_url($oldFileUrl, PHP_URL_PATH));
+                    $s3Client->deleteObject([
+                        'Bucket' => $_ENV['S3_BUCKET'],
+                        'Key' => $oldFilename,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                return new JsonResponse(['error' => 'Old file deletion failed: ' . $e->getMessage()], 500);
+            }
+
             // Génération d'un nom de fichier unique pour éviter les conflits
             $filename = uniqid() . '.' . $file->guessExtension();
 
-            // Téléchargement du fichier sur S3
+            // Téléchargement du nouveau fichier sur S3
             try {
                 $result = $s3Client->putObject([
                     'Bucket' => $_ENV['S3_BUCKET'],
@@ -209,7 +223,6 @@ class FeuilletController extends AbstractController
             } catch (\Exception $e) {
                 return new JsonResponse(['error' => 'File upload failed: ' . $e->getMessage()], 500);
             }
-
             
             $feuillet->setFileUrl($fileUrl); // Enregistrement de l'URL du fichier dans la base de données
         }
