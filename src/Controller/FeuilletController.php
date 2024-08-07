@@ -54,6 +54,30 @@ class FeuilletController extends AbstractController
         return new JsonResponse($data);
     }
 
+    #[Route('/api/feuillet/{id}', name: 'get_feuillet_by_id', methods: ['GET'])]
+    public function getFeuilletById(int $id): JsonResponse
+    {
+        $feuillet = $this->feuilletRepository->find($id);
+
+        if (!$feuillet) {
+            return new JsonResponse(['error' => 'Feuillet not found'], 404);
+        }
+
+        $data = [
+            'id' => $feuillet->getId(),
+            'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
+            'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
+            'eglise' => $feuillet->getEglise() ? $feuillet->getEglise()->getId() : null,
+            'egliseName' => $feuillet->getEglise() ? $feuillet->getEglise()->getNom() : null,
+            'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
+            'fileUrl' => $feuillet->getFileUrl(),
+            'viewCount' => $feuillet->getViewCount()
+        ];
+
+        return new JsonResponse($data);
+    }
+
+
     #[Route('/api/feuillet', name: 'add_feuillet', methods: ['POST'])]
     public function addFeuillet(Request $request, UserInterface $user): JsonResponse
     {
@@ -120,7 +144,7 @@ class FeuilletController extends AbstractController
         return new JsonResponse(['message' => 'Feuillet created'], 201);
     }
 
-    #[Route('/api/feuillet/{id}', name: 'update_feuillet', methods: ['PUT'])]
+    #[Route('/api/feuillet/{id}', name: 'update_feuillet', methods: ['POST'])]
     public function updateFeuillet(Request $request, int $id, UserInterface $user): JsonResponse
     {
         $feuillet = $this->feuilletRepository->find($id);
@@ -133,24 +157,64 @@ class FeuilletController extends AbstractController
         $celebrationDate = $request->request->get('celebration_date') ?? null;
         $paroisseId = $request->request->get('paroisse_id') ?? null;
 
-        if ($egliseId) {
+        if ($egliseId && !is_null($egliseId)) {
             $eglise = $this->entityManager->getRepository(Eglise::class)->find($egliseId);
             if ($eglise) {
                 $feuillet->setEglise($eglise);
+            } else {
+                return new JsonResponse(['error' => 'Eglise not found'], 404);
             }
         }
 
-        if ($paroisseId) {
+        if ($paroisseId && !is_null($paroisseId)) {
             $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
             if ($paroisse) {
                 $feuillet->setParoisse($paroisse);
+            } else {
+                return new JsonResponse(['error' => 'Paroisse not found'], 404);
             }
-        }
+        } 
 
         if ($celebrationDate) {
             $feuillet->setCelebrationDate(new \DateTime($celebrationDate));
         }
 
+        $file = $request->files->get('feuillet');
+
+        if($file){
+            // Configuration du client S3
+            $s3Client = new S3Client([
+                'version' => 'latest',
+                'region' => $_ENV['S3_REGION'],
+                'credentials' => [
+                    'key' => $_ENV['S3_KEY'],
+                    'secret' => $_ENV['S3_SECRET'],
+                ],
+                'endpoint' => 'https://s3.' . $_ENV['S3_REGION'] . '.io.cloud.ovh.net', // Assurez-vous de définir le bon endpoint OVH
+            ]);
+
+            // Génération d'un nom de fichier unique pour éviter les conflits
+            $filename = uniqid() . '.' . $file->guessExtension();
+
+            // Téléchargement du fichier sur S3
+            try {
+                $result = $s3Client->putObject([
+                    'Bucket' => $_ENV['S3_BUCKET'],
+                    'Key' => $filename,
+                    'SourceFile' => $file->getPathname(),
+                    'ACL' => 'public-read', // Si vous voulez que le fichier soit public
+                ]);
+
+                $fileUrl = $result['ObjectURL']; // Récupération de l'URL du fichier
+            } catch (\Exception $e) {
+                return new JsonResponse(['error' => 'File upload failed: ' . $e->getMessage()], 500);
+            }
+
+            
+            $feuillet->setFileUrl($fileUrl); // Enregistrement de l'URL du fichier dans la base de données
+        }
+
+        $this->entityManager->persist($feuillet);
         $this->entityManager->flush();
 
         return new JsonResponse(['message' => 'Feuillet updated']);
@@ -169,6 +233,32 @@ class FeuilletController extends AbstractController
             return new JsonResponse(['error' => 'Unauthorized'], 403);
         }
 
+        // Configuration du client S3
+        $s3Client = new S3Client([
+            'version' => 'latest',
+            'region' => $_ENV['S3_REGION'],
+            'credentials' => [
+                'key' => $_ENV['S3_KEY'],
+                'secret' => $_ENV['S3_SECRET'],
+            ],
+            'endpoint' => 'https://s3.' . $_ENV['S3_REGION'] . '.io.cloud.ovh.net', // Assurez-vous de définir le bon endpoint OVH
+        ]);
+
+        // Extraction du nom du fichier à partir de l'URL
+        $fileUrl = $feuillet->getFileUrl();
+        $filename = basename(parse_url($fileUrl, PHP_URL_PATH));
+
+        // Suppression du fichier du stockage S3
+        try {
+            $s3Client->deleteObject([
+                'Bucket' => $_ENV['S3_BUCKET'],
+                'Key' => $filename,
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => 'File deletion failed: ' . $e->getMessage()], 500);
+        }
+
+        // Suppression de l'objet Feuillet de la base de données
         $this->entityManager->remove($feuillet);
         $this->entityManager->flush();
 
