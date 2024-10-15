@@ -42,6 +42,18 @@ class Paroisse
     #[ORM\OneToMany(targetEntity: Feuillet::class, mappedBy: 'paroisse', orphanRemoval: true)]
     private Collection $feuillets;
 
+    #[ORM\Column(length: 255, nullable:true)]
+    private ?string $stripeCustomerId = null;
+
+    #[ORM\Column(type: 'boolean')]
+    private bool $paiementAJour = false;
+
+    #[ORM\Column(length: 255, nullable:true)]
+    private ?string $stripeSubscriptionId = null;
+
+    #[ORM\Column(length: 10, nullable:true)]
+    private ?string $codeUnique = null;
+
     public function __construct()
     {
         $this->eglises = new ArrayCollection();
@@ -176,6 +188,54 @@ class Paroisse
                 $feuillet->setParoisse(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getStripeCustomerId(): ?string
+    {
+        return $this->stripeCustomerId;
+    }
+
+    public function setStripeCustomerId(?string $stripeCustomerId): static
+    {
+        $this->stripeCustomerId = $stripeCustomerId;
+
+        return $this;
+    }
+
+    public function isPaiementAJour(): bool
+    {
+        return $this->paiementAJour;
+    }
+
+    public function setPaiementAJour(bool $paiementAJour): static
+    {
+        $this->paiementAJour = $paiementAJour;
+
+        return $this;
+    }
+
+    public function getStripeSubscriptionId(): ?string
+    {
+        return $this->stripeSubscriptionId;
+    }
+
+    public function setStripeSubscriptionId(?string $stripeSubscriptionId): self
+    {
+        $this->stripeSubscriptionId = $stripeSubscriptionId;
+
+        return $this;
+    }
+
+    public function getCodeUnique(): ?string
+    {
+        return $this->codeUnique;
+    }
+
+    public function setCodeUnique(?string $codeUnique): self
+    {
+        $this->codeUnique = $codeUnique;
 
         return $this;
     }

@@ -16,6 +16,7 @@
         "guzzlehttp/guzzle": "^7.8",
         "lexik/jwt-authentication-bundle": "^2.20",
         "nelmio/cors-bundle": "^2.5",
+        "stripe/stripe-php": "^15.5",
         "symfony/console": "7.0.*",
         "symfony/dotenv": "7.0.*",
         "symfony/flex": "^2",

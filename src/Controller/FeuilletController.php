@@ -60,7 +60,7 @@ class FeuilletController extends AbstractController
         $feuillet = $this->feuilletRepository->find($id);
 
         if (!$feuillet) {
-            return new JsonResponse(['error' => 'Feuillet not found'], 404);
+            return new JsonResponse(['error' => 'Feuillet introuvable'], 404);
         }
 
         $data = [
@@ -86,20 +86,20 @@ class FeuilletController extends AbstractController
         $paroisseId = $request->request->get('paroisse_id') ?? null;
 
         if (!isset($egliseId) || !isset($celebrationDate) || !isset($paroisseId)) {
-            return new JsonResponse(['error' => 'Invalid data'], 400);
+            return new JsonResponse(['error' => 'Données invalides'], 400);
         }
 
         $file = $request->files->get('feuillet');
 
         if(!$file){
-            return new JsonResponse(['error' => 'File not provided'], 400);
+            return new JsonResponse(['error' => 'Aucun fichier n\'a été transmis.'], 400);
         }
 
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
         $eglise = $this->entityManager->getRepository(Eglise::class)->find($egliseId);
 
         if (!$paroisse || !$eglise) {
-            return new JsonResponse(['error' => 'Church or Parish not found'], 404);
+            return new JsonResponse(['error' => 'Église ou paroisse introuvable.'], 404);
         }
 
         // Configuration du client S3
@@ -127,7 +127,7 @@ class FeuilletController extends AbstractController
 
             $fileUrl = $result['ObjectURL']; // Récupération de l'URL du fichier
         } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'File upload failed: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 'Erreur d\'upload du fichier: ' . $e->getMessage()], 500);
         }
 
         $feuillet = new Feuillet();
@@ -141,7 +141,7 @@ class FeuilletController extends AbstractController
         $this->entityManager->persist($feuillet);
         $this->entityManager->flush();
 
-        return new JsonResponse(['message' => 'Feuillet created'], 201);
+        return new JsonResponse(['message' => 'Feuillet créé'], 201);
     }
 
     #[Route('/api/feuillet/{id}', name: 'update_feuillet', methods: ['POST'])]
@@ -150,7 +150,7 @@ class FeuilletController extends AbstractController
         $feuillet = $this->feuilletRepository->find($id);
 
         if (!$feuillet) {
-            return new JsonResponse(['error' => 'Feuillet not found'], 404);
+            return new JsonResponse(['error' => 'Feuillet introuvable'], 404);
         }
         
         $egliseId = $request->request->get('eglise_id') ?? null;
@@ -162,7 +162,7 @@ class FeuilletController extends AbstractController
             if ($eglise) {
                 $feuillet->setEglise($eglise);
             } else {
-                return new JsonResponse(['error' => 'Eglise not found'], 404);
+                return new JsonResponse(['error' => 'Église introuvable'], 404);
             }
         }
 
@@ -171,7 +171,7 @@ class FeuilletController extends AbstractController
             if ($paroisse) {
                 $feuillet->setParoisse($paroisse);
             } else {
-                return new JsonResponse(['error' => 'Paroisse not found'], 404);
+                return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
             }
         } 
 
@@ -204,7 +204,7 @@ class FeuilletController extends AbstractController
                     ]);
                 }
             } catch (\Exception $e) {
-                return new JsonResponse(['error' => 'Old file deletion failed: ' . $e->getMessage()], 500);
+                return new JsonResponse(['error' => 'La suppression de l\'ancien fichier a échouée: ' . $e->getMessage()], 500);
             }
 
             // Génération d'un nom de fichier unique pour éviter les conflits
@@ -221,7 +221,7 @@ class FeuilletController extends AbstractController
 
                 $fileUrl = $result['ObjectURL']; // Récupération de l'URL du fichier
             } catch (\Exception $e) {
-                return new JsonResponse(['error' => 'File upload failed: ' . $e->getMessage()], 500);
+                return new JsonResponse(['error' => 'Erreur d\'upload du fichier: ' . $e->getMessage()], 500);
             }
             
             $feuillet->setFileUrl($fileUrl); // Enregistrement de l'URL du fichier dans la base de données
@@ -230,7 +230,7 @@ class FeuilletController extends AbstractController
         $this->entityManager->persist($feuillet);
         $this->entityManager->flush();
 
-        return new JsonResponse(['message' => 'Feuillet updated']);
+        return new JsonResponse(['message' => 'Feuillet mis à jour']);
     }
 
     #[Route('/api/feuillet/{id}', name: 'delete_feuillet', methods: ['DELETE'])]
@@ -239,11 +239,11 @@ class FeuilletController extends AbstractController
         $feuillet = $this->feuilletRepository->find($id);
 
         if (!$feuillet) {
-            return new JsonResponse(['error' => 'Feuillet not found'], 404);
+            return new JsonResponse(['error' => 'Feuillet introuvable'], 404);
         }
 
         if ($feuillet->getUtilisateur() !== $user) {
-            return new JsonResponse(['error' => 'Unauthorized'], 403);
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
         }
 
         // Configuration du client S3
@@ -268,14 +268,14 @@ class FeuilletController extends AbstractController
                 'Key' => $filename,
             ]);
         } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'File deletion failed: ' . $e->getMessage()], 500);
+            return new JsonResponse(['error' => 'Erreur de suppression du fichier: ' . $e->getMessage()], 500);
         }
 
         // Suppression de l'objet Feuillet de la base de données
         $this->entityManager->remove($feuillet);
         $this->entityManager->flush();
 
-        return new JsonResponse(['message' => 'Feuillet deleted']);
+        return new JsonResponse(['message' => 'Feuillet supprimé']);
     }
 
     #[Route('/api/feuillet/user/latest', name: 'get_user_latest_feuillets', methods: ['GET'])]
@@ -307,7 +307,7 @@ class FeuilletController extends AbstractController
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
 
         if (!$paroisse) {
-            return new JsonResponse(['error' => 'Parish not found'], 404);
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
         }
 
         $feuillets = $this->feuilletRepository->findBy(
@@ -337,7 +337,7 @@ class FeuilletController extends AbstractController
         $feuillet = $this->entityManager->getRepository(Feuillet::class)->find($id);
 
         if (!$feuillet || !$feuillet->getFileUrl()) {
-            throw new NotFoundHttpException('Feuillet not found or file URL is missing');
+            throw new NotFoundHttpException('Feuillet introuvable ou l\'URL du fichier est manquant.');
         }
 
         $fileUrl = $feuillet->getFileUrl();
@@ -351,7 +351,7 @@ class FeuilletController extends AbstractController
         try {
             $response = $client->get($fileUrl);
         } catch (\Exception $e) {
-            throw new NotFoundHttpException('File not found');
+            throw new NotFoundHttpException('Fichier introuvable');
         }
 
         $pdfContent = $response->getBody()->getContents();

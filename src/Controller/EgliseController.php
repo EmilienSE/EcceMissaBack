@@ -50,13 +50,20 @@ class EgliseController extends AbstractController
         $paroisseId = $request->request->get('paroisse_id') ?? null;
 
         if (empty($nom) || empty($gps) || empty($paroisseId)) {
-            return new JsonResponse(['error' => 'Invalid data'], 400);
+            return new JsonResponse(['error' => 'Données invalides'], 400);
         }
 
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
 
         if (!$paroisse) {
-            return new JsonResponse(['error' => 'Parish not found'], 404);
+            return new JsonResponse(['error' => 'Paroisse inexistante'], 404);
+        }
+
+        // Vérifier le nombre d'églises associées à la paroisse
+        $nombreEglises = $this->entityManager->getRepository(Eglise::class)->count(['paroisse' => $paroisse]);
+
+        if ($nombreEglises >= 3) {
+            return new JsonResponse(['error' => 'Les paroisses ne peuvent pas avoir plus de trois églises'], 400);
         }
 
         $eglise = new Eglise();
@@ -68,16 +75,16 @@ class EgliseController extends AbstractController
         $this->entityManager->persist($eglise);
         $this->entityManager->flush();
 
-        return new JsonResponse(['message' => 'Eglise created'], 201);
+        return new JsonResponse(['message' => 'Église crée'], 201);
     }
 
-    #[Route('/api/eglise/{id}', name: 'update_eglise', methods: ['PUT'])]
+    #[Route('/api/eglise/{id}', name: 'update_eglise', methods: ['POST'])]
     public function updateEglise(Request $request, int $id, UserInterface $user): JsonResponse
     {
         $eglise = $this->egliseRepository->find($id);
 
         if (!$eglise) {
-            return new JsonResponse(['error' => 'Eglise not found'], 404);
+            return new JsonResponse(['error' => 'Église introuvable'], 404);
         }
 
         $nom = $request->request->get('nom') ?? null;
@@ -103,7 +110,7 @@ class EgliseController extends AbstractController
 
         $this->entityManager->flush();
 
-        return new JsonResponse(['message' => 'Eglise updated']);
+        return new JsonResponse(['message' => 'Église mise à jour']);
     }
 
     #[Route('/api/eglise/{id}', name: 'delete_eglise', methods: ['DELETE'])]
@@ -112,17 +119,17 @@ class EgliseController extends AbstractController
         $eglise = $this->egliseRepository->find($id);
 
         if (!$eglise) {
-            return new JsonResponse(['error' => 'Eglise not found'], 404);
+            return new JsonResponse(['error' => 'Église introuvable'], 404);
         }
 
         // Check if the user is a responsible of the eglise
         if (!$eglise->getResponsable()->contains($user)) {
-            return new JsonResponse(['error' => 'Unauthorized'], 403);
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
         }
 
         $this->entityManager->remove($eglise);
         $this->entityManager->flush();
 
-        return new JsonResponse(['message' => 'Eglise deleted']);
+        return new JsonResponse(['message' => 'Église supprimée']);
     }
 }
