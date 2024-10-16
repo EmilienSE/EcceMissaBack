@@ -188,7 +188,7 @@ class ParoisseController extends AbstractController
         if ($existingParoisse) {
             return new JsonResponse(['error' => 'Vous êtes déjà responsable d\'une paroisse.'], 403);
         }
-        
+
         $codeUnique = $request->request->get('code_unique') ?? null;
 
         if (empty($codeUnique)) {
@@ -346,6 +346,42 @@ class ParoisseController extends AbstractController
             return new JsonResponse([
                 'paymentLink' => $session->url,
             ], 201);
+
+        } catch (\Exception $e) {
+            // Gérer les erreurs Stripe
+            return new JsonResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    #[Route('/api/paroisse/{id}/billing_portal', name: 'billing_portal', methods: ['GET'])]
+    public function redirectToBillingPortal(int $id): JsonResponse
+    {
+        // Rechercher la paroisse
+        $paroisse = $this->paroisseRepository->find($id);
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        // Vérifier si la paroisse a un client Stripe associé
+        if (!$paroisse->getStripeCustomerId()) {
+            return new JsonResponse(['error' => 'Aucun client Stripe trouvé pour cette paroisse'], 404);
+        }
+
+        // Configurer la clé API Stripe
+        \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+
+        try {
+            // Créer une session du portail de facturation Stripe pour le client
+            $session = \Stripe\BillingPortal\Session::create([
+                'customer' => $paroisse->getStripeCustomerId(),
+                'return_url' => 'http://localhost:4200/paroisse',  // URL vers laquelle rediriger l'utilisateur après la gestion de son abonnement
+            ]);
+
+            // Retourner le lien de redirection vers le portail de facturation
+            return new JsonResponse([
+                'billingPortalLink' => $session->url,
+            ], 200);
 
         } catch (\Exception $e) {
             // Gérer les erreurs Stripe
