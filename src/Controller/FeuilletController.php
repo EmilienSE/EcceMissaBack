@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Eglise;
 use App\Entity\Feuillet;
 use App\Entity\Paroisse;
+use App\Entity\Utilisateur;
 use Aws\S3\S3Client;
 use App\Repository\FeuilletRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,9 +30,22 @@ class FeuilletController extends AbstractController
     }
 
     #[Route('/api/feuillet', name: 'get_feuillet', methods: ['GET'])]
-    public function index(): JsonResponse
+    public function index(UserInterface $user): JsonResponse
     {
-        $feuillets = $this->feuilletRepository->findAll();
+        // Récupérer la paroisse de l'utilisateur
+        $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user->getId())->getParoisse();
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        // Vérifier si le paiement est à jour
+        if (!$paroisse->isPaiementAJour()) {
+            return new JsonResponse(['error' => 'Le paiement de la paroisse n\'est pas à jour.'], 403);
+        }
+
+        // Récupérer les feuillets associés à la paroisse de l'utilisateur
+        $feuillets = $this->feuilletRepository->findBy(['paroisse' => $paroisse]);
         $data = [];
 
         foreach ($feuillets as $feuillet) {
@@ -46,7 +60,7 @@ class FeuilletController extends AbstractController
                 'viewCount' => $feuillet->getViewCount()
             ];
         }
-        
+
         usort($data, function ($a, $b) {
             return strtotime($b['celebrationDate']) - strtotime($a['celebrationDate']);
         });
@@ -100,6 +114,10 @@ class FeuilletController extends AbstractController
 
         if (!$paroisse || !$eglise) {
             return new JsonResponse(['error' => 'Église ou paroisse introuvable.'], 404);
+        }
+
+        if (!$paroisse->isPaiementAJour()) {
+            return new JsonResponse(['error' => 'Le paiement de la paroisse n\'est pas à jour. Merci de vous rendre dans votre espace paroisse et de régulariser le paiement.'], 403);
         }
 
         // Configuration du client S3
