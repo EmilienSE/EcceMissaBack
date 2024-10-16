@@ -264,6 +264,7 @@ class ParoisseController extends AbstractController
                 'nom' => $paroisse->getNom(),
                 'gps' => $paroisse->getGPS(),
                 'diocese' => $paroisse->getDiocese() ? $paroisse->getDiocese()->getNom() : null,
+                'diocese_id' => $paroisse->getDiocese() ? $paroisse->getDiocese()->getId() : null,
                 'paiement_a_jour' => $paroisse->isPaiementAJour(),
                 'code_unique' => $paroisse->getCodeUnique(),
                 'responsables' => $responsables
@@ -282,6 +283,10 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
         }
 
+        if (!$paroisse->getResponsable()->contains($user)) {
+            return new JsonResponse(['error' => 'Non autorisé. Vous n\'êtes pas responsable de cette paroisse.'], 403);
+        }
+
         $nom = $request->request->get('nom') ?? null;
         $gps = $request->request->get('gps') ?? null;
         $dioceseId = $request->request->get('diocese_id') ?? null;
@@ -298,11 +303,16 @@ class ParoisseController extends AbstractController
             $diocese = $this->entityManager->getRepository(Diocese::class)->find($dioceseId);
             if ($diocese) {
                 $paroisse->setDiocese($diocese);
+            } else {
+                return new JsonResponse(['error' => 'Diocèse introuvable'], 404);
             }
         }
 
-        $paroisse->addResponsable($user);
+        if (!$paroisse->getResponsable()->contains($user)) {
+            $paroisse->addResponsable($user);
+        }
 
+        $this->entityManager->persist($paroisse);
         $this->entityManager->flush();
 
         return new JsonResponse(['message' => 'Paroisse mise à jour']);
