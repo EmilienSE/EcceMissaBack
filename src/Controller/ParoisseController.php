@@ -73,7 +73,7 @@ class ParoisseController extends AbstractController
         $paroisse->setPaiementAJour(false);
 
         // Générer un code unique aléatoire
-        $codeUnique = substr(bin2hex(random_bytes(5)), 0, 10);
+        $codeUnique = strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
         $paroisse->setCodeUnique($codeUnique);
 
         $this->entityManager->persist($paroisse);
@@ -239,13 +239,20 @@ class ParoisseController extends AbstractController
         
         $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user)->getParoisse();
 
+        $responsables = [];
+        foreach($paroisse->getResponsable() as $responsable) {
+            $responsables[] = $responsable->getEmail();
+        }
+
         if($paroisse){
             return new JsonResponse([
                 'id' => $paroisse->getId(),
                 'nom' => $paroisse->getNom(),
                 'gps' => $paroisse->getGPS(),
                 'diocese' => $paroisse->getDiocese() ? $paroisse->getDiocese()->getNom() : null,
-                'paiement_a_jour' => $paroisse->isPaiementAJour()
+                'paiement_a_jour' => $paroisse->isPaiementAJour(),
+                'code_unique' => $paroisse->getCodeUnique(),
+                'responsables' => $responsables
             ]);
         } else {
             return new JsonResponse('null', 200, [], true);
