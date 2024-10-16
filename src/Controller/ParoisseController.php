@@ -51,6 +51,13 @@ class ParoisseController extends AbstractController
     #[Route('/api/paroisse', name: 'add_paroisse', methods: ['POST'])]
     public function addParoisse(Request $request, UserInterface $user): JsonResponse
     {
+        // Vérifier si l'utilisateur est déjà responsable d'une paroisse
+        $existingParoisse = $this->entityManager->getRepository(Utilisateur::class)->findOneBy(['id' => $user->getId()])->getParoisse();
+
+        if ($existingParoisse) {
+            return new JsonResponse(['error' => 'Vous êtes déjà responsable d\'une paroisse.'], 403);
+        }
+
         $nom = $request->request->get('nom') ?? null;
         $gps = 'x';//$request->request->get('gps') ?? null;
         $dioceseId = $request->request->get('diocese_id') ?? null;
@@ -175,6 +182,13 @@ class ParoisseController extends AbstractController
     #[Route('/api/paroisse/join', name: 'join_paroisse', methods: ['POST'])]
     public function joinParoisse(Request $request, UserInterface $user): JsonResponse
     {
+        // Vérifier si l'utilisateur est déjà responsable d'une paroisse
+        $existingParoisse = $this->entityManager->getRepository(Utilisateur::class)->findOneBy(['id' => $user->getId()])->getParoisse();
+
+        if ($existingParoisse) {
+            return new JsonResponse(['error' => 'Vous êtes déjà responsable d\'une paroisse.'], 403);
+        }
+        
         $codeUnique = $request->request->get('code_unique') ?? null;
 
         if (empty($codeUnique)) {
