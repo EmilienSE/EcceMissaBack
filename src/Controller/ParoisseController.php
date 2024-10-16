@@ -233,6 +233,25 @@ class ParoisseController extends AbstractController
         return new JsonResponse(['message' => 'Vous avez quitté la paroisse'], 200);
     }
 
+    #[Route('/api/paroisse/ma_paroisse', name: 'get_user_paroisse', methods: ['GET'])]
+    public function getUserParoisse(UserInterface $user): JsonResponse
+    {
+        
+        $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user)->getParoisse();
+
+        if($paroisse){
+            return new JsonResponse([
+                'id' => $paroisse->getId(),
+                'nom' => $paroisse->getNom(),
+                'gps' => $paroisse->getGPS(),
+                'diocese' => $paroisse->getDiocese() ? $paroisse->getDiocese()->getNom() : null,
+                'paiement_a_jour' => $paroisse->isPaiementAJour()
+            ]);
+        } else {
+            return new JsonResponse('null', 200, [], true);
+        }
+    }
+
     #[Route('/api/paroisse/{id}', name: 'update_paroisse', methods: ['POST'])]
     public function updateParoisse(Request $request, int $id, UserInterface $user): JsonResponse
     {
@@ -268,22 +287,48 @@ class ParoisseController extends AbstractController
         return new JsonResponse(['message' => 'Paroisse mise à jour']);
     }
 
-    #[Route('/api/paroisse/ma_paroisse', name: 'get_user_paroisse', methods: ['GET'])]
-    public function getUserParoisse(UserInterface $user): JsonResponse
+    #[Route('/api/paroisse/{id}/retry_payment', name: 'retry_payment', methods: ['POST'])]
+    public function retryPayment(int $id): JsonResponse
     {
-        
-        $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user)->getParoisse();
+        $paroisse = $this->paroisseRepository->find($id);
 
-        if($paroisse){
-            return new JsonResponse([
-                'id' => $paroisse->getId(),
-                'nom' => $paroisse->getNom(),
-                'gps' => $paroisse->getGPS(),
-                'diocese' => $paroisse->getDiocese() ? $paroisse->getDiocese()->getNom() : null,
-                'paiement_a_jour' => $paroisse->isPaiementAJour()
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        if ($paroisse->isPaiementAJour()) {
+            return new JsonResponse(['message' => 'Le paiement est déjà à jour'], 400);
+        }
+
+        // Configurer la clé API Stripe
+        Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+
+        try {
+            // Création d'une nouvelle session de paiement pour régulariser
+            $session = Session::create([
+                'success_url' => 'http://localhost:4200/paroisse',  // Rediriger vers une page de succès
+                'cancel_url' => 'http://localhost:4200/paroisse',     // Rediriger en cas d'échec
+                'mode' => 'subscription',
+                'payment_method_types' => ['card', 'sepa_debit'],
+                'line_items' => [[
+                    'price' => 'price_1Q7XV3E8TPrVnm48J30MCsnl',
+                    'quantity' => 1,
+                ]],
+                'subscription_data' => [
+                    'metadata' => [
+                        'paroisse_id' => $paroisse->getId(),
+                    ]
+                ]
             ]);
-        } else {
-            return new JsonResponse('null', 200, [], true);
+
+            // Retourner le lien de paiement pour permettre au frontend de rediriger l'utilisateur
+            return new JsonResponse([
+                'paymentLink' => $session->url,
+            ], 201);
+
+        } catch (\Exception $e) {
+            // Gérer les erreurs Stripe
+            return new JsonResponse(['error' => $e->getMessage()], 500);
         }
     }
 
