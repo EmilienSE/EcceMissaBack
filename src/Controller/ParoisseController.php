@@ -253,6 +253,10 @@ class ParoisseController extends AbstractController
         
         $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user)->getParoisse();
 
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
         $responsables = [];
         foreach($paroisse->getResponsable() as $responsable) {
             $responsables[] = $responsable->getEmail();
