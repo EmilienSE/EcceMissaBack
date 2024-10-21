@@ -365,7 +365,7 @@ class FeuilletController extends AbstractController
         $this->entityManager->persist($feuillet);
         $this->entityManager->flush();
 
-        $client = new Client();
+        $client = new Client(['verify'=>false]);
         try {
             $response = $client->get($fileUrl);
         } catch (\Exception $e) {

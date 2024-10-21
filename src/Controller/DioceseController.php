@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
+use App\Entity\Utilisateur;
 
 class DioceseController extends AbstractController
 {
@@ -102,5 +103,31 @@ class DioceseController extends AbstractController
         $this->entityManager->flush();
 
         return new JsonResponse(['message' => 'Diocese deleted']);
+    }
+
+    #[Route('/api/diocese/mon_diocese', name: 'get_user_diocese', methods: ['GET'])]
+    public function getUserDiocese(UserInterface $user): JsonResponse
+    {
+        
+        $diocese = $this->entityManager->getRepository(Utilisateur::class)->find($user)->getParoisse()->getDiocese();
+
+        if (!$diocese) {
+            return new JsonResponse(['error' => 'Diocèse introuvable'], 404);
+        }
+
+        $paroisses = [];
+        foreach($diocese->getParoisses() as $paroisse) {
+            $paroisses[] = $paroisse->getNom();
+        }
+
+        if($diocese){
+            return new JsonResponse([
+                'id' => $diocese->getId(),
+                'nom' => $diocese->getNom(),
+                'paroisses' => $paroisses,
+            ]);
+        } else {
+            return new JsonResponse('null', 200, [], true);
+        }
     }
 }
