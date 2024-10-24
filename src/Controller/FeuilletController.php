@@ -2,7 +2,6 @@
 
 namespace App\Controller;
 
-use App\Entity\Eglise;
 use App\Entity\Feuillet;
 use App\Entity\Paroisse;
 use App\Entity\Utilisateur;
@@ -53,8 +52,6 @@ class FeuilletController extends AbstractController
                 'id' => $feuillet->getId(),
                 'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
                 'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
-                'eglise' => $feuillet->getEglise() ? $feuillet->getEglise()->getId() : null,
-                'egliseName' => $feuillet->getEglise() ? $feuillet->getEglise()->getNom() : null,
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
                 'fileUrl' => $feuillet->getFileUrl(),
                 'viewCount' => $feuillet->getViewCount()
@@ -81,8 +78,6 @@ class FeuilletController extends AbstractController
             'id' => $feuillet->getId(),
             'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
             'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
-            'eglise' => $feuillet->getEglise() ? $feuillet->getEglise()->getId() : null,
-            'egliseName' => $feuillet->getEglise() ? $feuillet->getEglise()->getNom() : null,
             'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
             'fileUrl' => $feuillet->getFileUrl(),
             'viewCount' => $feuillet->getViewCount()
@@ -95,11 +90,10 @@ class FeuilletController extends AbstractController
     #[Route('/api/feuillet', name: 'add_feuillet', methods: ['POST'])]
     public function addFeuillet(Request $request, UserInterface $user): JsonResponse
     {
-        $egliseId = $request->request->get('eglise_id') ?? null;
         $celebrationDate = $request->request->get('celebration_date') ?? null;
         $paroisseId = $request->request->get('paroisse_id') ?? null;
 
-        if (!isset($egliseId) || !isset($celebrationDate) || !isset($paroisseId)) {
+        if (!isset($celebrationDate) || !isset($paroisseId)) {
             return new JsonResponse(['error' => 'Données invalides'], 400);
         }
 
@@ -110,9 +104,8 @@ class FeuilletController extends AbstractController
         }
 
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
-        $eglise = $this->entityManager->getRepository(Eglise::class)->find($egliseId);
 
-        if (!$paroisse || !$eglise) {
+        if (!$paroisse) {
             return new JsonResponse(['error' => 'Église ou paroisse introuvable.'], 404);
         }
 
@@ -150,7 +143,6 @@ class FeuilletController extends AbstractController
 
         $feuillet = new Feuillet();
         $feuillet->setUtilisateur($user);
-        $feuillet->setEglise($eglise);
         $feuillet->setParoisse($paroisse);
         $feuillet->setDescription('');
         $feuillet->setCelebrationDate(new \DateTime($celebrationDate));
@@ -171,18 +163,8 @@ class FeuilletController extends AbstractController
             return new JsonResponse(['error' => 'Feuillet introuvable'], 404);
         }
         
-        $egliseId = $request->request->get('eglise_id') ?? null;
         $celebrationDate = $request->request->get('celebration_date') ?? null;
         $paroisseId = $request->request->get('paroisse_id') ?? null;
-
-        if ($egliseId && !is_null($egliseId)) {
-            $eglise = $this->entityManager->getRepository(Eglise::class)->find($egliseId);
-            if ($eglise) {
-                $feuillet->setEglise($eglise);
-            } else {
-                return new JsonResponse(['error' => 'Église introuvable'], 404);
-            }
-        }
 
         if ($paroisseId && !is_null($paroisseId)) {
             $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
@@ -311,7 +293,6 @@ class FeuilletController extends AbstractController
                 'id' => $feuillet->getId(),
                 'description' => $feuillet->getDescription(),
                 'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
-                'eglise' => $feuillet->getEglise() ? $feuillet->getEglise()->getId() : null,
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
             ];
         }
@@ -341,7 +322,6 @@ class FeuilletController extends AbstractController
                 'description' => $feuillet->getDescription(),
                 'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
                 'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
-                'eglise' => $feuillet->getEglise() ? $feuillet->getEglise()->getId() : null,
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
             ];
         }

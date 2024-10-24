@@ -103,6 +103,45 @@ class UtilisateurController extends AbstractController
         return $this->json($utilisateurs);
     }
 
+    #[Route('/api/utilisateur/modifier-mot-de-passe', methods: ['POST'])]
+    public function changePassword(Request $request, UtilisateurRepository $utilisateurRepository, UserPasswordHasherInterface $passwordHasher, UserInterface $currentUser): JsonResponse {
+        // Récupérer l'utilisateur actuel
+        $utilisateur = $utilisateurRepository->find($currentUser);
+
+        if (!$utilisateur) {
+            return $this->json(['error' => 'Utilisateur non trouvé'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        // Récupérer les données du mot de passe
+        $ancienPassword = $request->request->get('ancien_password');
+        $nouveauPassword = $request->request->get('nouveau_password');
+
+        // Vérifier que les deux mots de passe sont remplis
+        if (empty($ancienPassword) || empty($nouveauPassword)) {
+            return $this->json(['error' => 'Veuillez fournir tous les champs requis.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Vérifier que l'ancien mot de passe est correct
+        if (!$passwordHasher->isPasswordValid($utilisateur, $ancienPassword)) {
+            return $this->json(['error' => 'L\'ancien mot de passe est incorrect.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Vérifier que le nouveau mot de passe respecte les critères de sécurité
+        if (strlen($nouveauPassword) < 6) {
+            return $this->json(['error' => 'Le nouveau mot de passe doit contenir au moins 6 caractères.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        // Hacher le nouveau mot de passe et le mettre à jour
+        $hashedPassword = $passwordHasher->hashPassword($utilisateur, $nouveauPassword);
+        $utilisateur->setPassword($hashedPassword);
+
+        // Enregistrer les modifications
+        $this->entityManager->persist($utilisateur);
+        $this->entityManager->flush();
+
+        return $this->json(['message' => 'Mot de passe mis à jour avec succès.']);
+    }
+
     // Mettre à jour un utilisateur
     #[Route('/api/utilisateur/{id}', methods: ['POST'])]
     public function updateUtilisateur(int $id, Request $request, UtilisateurRepository $utilisateurRepository): JsonResponse
