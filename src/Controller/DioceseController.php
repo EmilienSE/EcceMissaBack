@@ -108,8 +108,13 @@ class DioceseController extends AbstractController
     #[Route('/api/diocese/mon_diocese', name: 'get_user_diocese', methods: ['GET'])]
     public function getUserDiocese(UserInterface $user): JsonResponse
     {
+        $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user)->getParoisse();
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
         
-        $diocese = $this->entityManager->getRepository(Utilisateur::class)->find($user)->getParoisse()->getDiocese();
+        $diocese = $paroisse->getDiocese();
 
         if (!$diocese) {
             return new JsonResponse(['error' => 'Diocèse introuvable'], 404);
