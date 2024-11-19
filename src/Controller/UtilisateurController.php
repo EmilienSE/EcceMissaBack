@@ -11,6 +11,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use App\Entity\Utilisateur;
 use App\Repository\UtilisateurRepository;
 use Symfony\Component\Security\Core\User\UserInterface;
+use App\Entity\Paroisse;
 
 class UtilisateurController extends AbstractController
 {
@@ -142,6 +143,38 @@ class UtilisateurController extends AbstractController
         return $this->json(['message' => 'Mot de passe mis à jour avec succès.']);
     }
 
+    #[Route('/api/utilisateur/delete', name: 'delete_utilisateur', methods: ['POST'])]
+    public function deleteUtilisateur(Request $request, UserInterface $user): JsonResponse
+    {
+        // Rechercher la paroisse de l'utilisateur
+        $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user)->getParoisse();
+
+        if ($paroisse && $paroisse->getResponsable()->contains($user)) {        
+            // Supprimer l'utilisateur de la liste des responsables
+            $paroisse->removeResponsable($user);
+
+            // Vérifier si la paroisse n'a plus de responsables
+
+            if ($paroisse->getResponsable()->isEmpty()) {
+                // Appel à la fonction d'annulation de l'abonnement Stripe
+                $error = $this->cancelStripeSubscription($paroisse);
+                if ($error) {
+                    return new JsonResponse(['error' => $error], 500);
+                }
+
+                // Supprimer la paroisse si elle n'a plus de responsables
+                $this->entityManager->remove($paroisse);
+            }
+
+        }
+
+        // Sauvegarder les changements
+        $this->entityManager->remove($user);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['message' => 'Vous avez quitté la paroisse'], 200);
+    }
+
     // Mettre à jour un utilisateur
     #[Route('/api/utilisateur/{id}', methods: ['POST'])]
     public function updateUtilisateur(int $id, Request $request, UtilisateurRepository $utilisateurRepository): JsonResponse
@@ -175,19 +208,28 @@ class UtilisateurController extends AbstractController
         return $this->json(['message' => 'Utilisateur mis à jour avec succès.']);
     }
 
-    // Supprimer un utilisateur
-    #[Route('/api/utilisateur/{id}', methods: ['DELETE'])]
-    public function deleteUtilisateur(int $id, EntityManagerInterface $entityManager, UtilisateurRepository $utilisateurRepository): JsonResponse
+    private function cancelStripeSubscription(Paroisse $paroisse): ?string
     {
-        $utilisateur = $utilisateurRepository->find($id);
-
-        if (!$utilisateur) {
-            return $this->json(['error' => 'Utilisateur non trouvé'], JsonResponse::HTTP_NOT_FOUND);
+        $stripeSubscriptionId = $paroisse->getStripeSubscriptionId();
+        
+        if ($stripeSubscriptionId) {
+            \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+            
+            try {
+                // Récupérer et annuler l'abonnement Stripe
+                $subscription = \Stripe\Subscription::retrieve($stripeSubscriptionId);
+                $subscription->cancel();
+                
+                // Mettre à jour l'état de l'abonnement dans la base de données
+                $paroisse->setPaiementAJour(false);
+                $this->entityManager->flush();
+                
+                return null; // Succès
+            } catch (\Exception $e) {
+                return 'Erreur lors de l\'annulation de l\'abonnement Stripe: ' . $e->getMessage();
+            }
         }
 
-        $entityManager->remove($utilisateur);
-        $entityManager->flush();
-
-        return $this->json(['message' => 'Utilisateur supprimé avec succès.']);
+        return null; // Pas d'abonnement à annuler
     }
 }
