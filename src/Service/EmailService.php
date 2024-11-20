@@ -69,4 +69,27 @@ class EmailService
 
         $this->mailer->send($email);
     }
+    
+    public function sendUtilisateurSupprimeEmail(string $nom, string $prenom, string $email): void
+    {
+        $userName = $prenom.' '.$nom;
+        $userEmail = $email;
+        $subject = 'Au revoir '.$prenom.'!';
+
+        $htmlContent = $this->twig->render('emails/utilisateur_supprime.html.twig', [
+            'subject' => $subject,
+            'user_name' => $userName,
+        ]);
+
+        $email = (new Email())
+            ->from($this->from)
+            ->to($this->to)
+            ->subject($subject)
+            ->html($htmlContent);
+
+        $imagePath = 'logo.png';
+        $email->embedFromPath($imagePath, 'logo.png');
+
+        $this->mailer->send($email);
+    }
 }

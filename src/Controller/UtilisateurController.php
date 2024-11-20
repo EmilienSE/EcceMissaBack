@@ -178,6 +178,8 @@ class UtilisateurController extends AbstractController
         $this->entityManager->remove($user);
         $this->entityManager->flush();
 
+        $this->emailService->sendUtilisateurSupprimeEmail($user->getNom(), $user->getPrenom(), $user->getEmail());
+
         return new JsonResponse(['message' => 'Vous avez quitté la paroisse'], 200);
     }
 

@@ -1,0 +1,12 @@
+{# templates/emails/registration_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Au revoir !{% endblock %}
+
+{% block content %}
+    <h1>Au revoir, {{ user_name }} !</h1>
+    <p>Nous sommes tristes de vous voir partir.</p>
+    <p>Si vous apparteniez à une paroisse, et qu'aucun utilisateur n'y est encore associé, celle-ci a bien été supprimée d'Ecce Missa et l'abonnement suspendu.</p>
+    <p>A bientôt !</p>
+{% endblock %}
