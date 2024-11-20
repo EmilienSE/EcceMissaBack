@@ -9,13 +9,15 @@ use App\Repository\ParoisseRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Stripe\Checkout\Session;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Stripe\Stripe;
 use Stripe\Customer;
-use Stripe\Subscription;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class ParoisseController extends AbstractController
 {
@@ -401,6 +403,79 @@ class ParoisseController extends AbstractController
             // Gérer les erreurs Stripe
             return new JsonResponse(['error' => $e->getMessage()], 500);
         }
+    }
+
+    #[Route('/paroisse/{id}/pdf', name: 'generate_paroisse_pdf', methods: ['GET'])]
+    public function generateParoissePdf(int $id): Response
+    {
+        $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($id);
+
+        if (!$paroisse) {
+            throw new NotFoundHttpException('Paroisse introuvable.');
+        }
+
+        // URL vers la route showNearestFeuilletPdfByParoisse
+        $routeUrl = $this->generateUrl(
+            'show_nearest_feuillet_pdf_by_paroisse',
+            ['paroisseId' => $id],
+            UrlGeneratorInterface::ABSOLUTE_URL
+        );
+
+        // Génération du PDF
+        $pdf = new \TCPDF();
+        $oswald = \TCPDF_FONTS::addTTFfont('Oswald.ttf', 'TrueTypeUnicode', '', 96);
+        $oswaldB = \TCPDF_FONTS::addTTFfont('Oswald-Bold.ttf', 'TrueTypeUnicode', '', 96);
+        $roboto = \TCPDF_FONTS::addTTFfont('Roboto-Bold.ttf', 'TrueTypeUnicode', '', 96);
+        $pdf->SetCreator(PDF_CREATOR);
+        $pdf->SetAuthor('Ecce Missa');
+        $pdf->SetTitle('Suivez la messe depuis votre téléphone');
+        $pdf->SetMargins(10, 10, 10);
+        $pdf->SetAutoPageBreak(true, 10);
+        $pdf->SetPrintHeader(false);
+        $pdf->SetPrintFooter(false);
+        $pdf->AddPage();
+
+        // Contenu du PDF
+        $logo = 'logo.png'; // Remplacez par le chemin de votre logo
+        $pdf->Image($logo, 95, 10, 20, 20, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+
+        // Ajouter le titre principal
+        $pdf->SetFont($oswald, '', 20);
+        $pdf->SetTextColor(38, 65, 66);
+        $pdf->Ln(20); // Saut de ligne
+        $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+        $pdf->Ln(15);
+        $pdf->SetFont($oswaldB, 'B', 45);
+        $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+        $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+
+        // Générer le QR Code
+        $qrCodeUrl = $routeUrl; // Remplacez par l'URL de votre QR code
+        $style = [
+            'border' => 0,
+            'padding' => 4,
+            'fgcolor' => [38, 65, 66],
+            'bgcolor' => [255, 255, 255],
+        ];
+        $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 72.5, 105, 70, 70, $style, 'N');
+
+        // Ajouter le texte explicatif
+        $pdf->Ln(20);
+        $pdf->SetFont($roboto, '', 30);
+        $pdf->Cell(0, 10, 'Pour ce faire, il vous suffit de', 0, 1, 'C');
+        $pdf->Cell(0, 10, 'scanner ce QR Code, et le tour est', 0, 1, 'C');
+        $pdf->Cell(0, 10, 'joué !', 0, 1, 'C');
+
+        // Ajouter le pied de page
+        $pdf->SetFont($oswald, '', 10);
+        $pdf->SetY(-30);
+        $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
+        $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+
+        // Envoi du PDF en réponse
+        return new Response($pdf->Output('paroisse_qr_code.pdf', 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 
     private function cancelStripeSubscription(Paroisse $paroisse): ?string
