@@ -1,0 +1,11 @@
+{# templates/emails/registration_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Bienvenue sur Mon Application{% endblock %}
+
+{% block content %}
+    <h1>Bienvenue, {{ user_name }} !</h1>
+    <p>Merci de vous être inscrit. Voici vos informations :</p>
+    <p>Email : {{ user_email }}</p>
+{% endblock %}

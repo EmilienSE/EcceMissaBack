@@ -1,0 +1,58 @@
+{# templates/emails/base.html.twig #}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Mon Application{% endblock %}</title>
+    <style>
+        /* Vous pouvez ajouter ici des styles globaux pour tous vos e-mails */
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            color: #264142;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Oswald', sans-serif;
+            color: #264142;
+        }
+        .footer {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .footer .img-container {
+            text-align: center;
+        }
+        .footer .img-container img {
+            max-width: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <div class="footer">
+        <div class="img-container">
+            <img src="cid:logo.png" alt="Ecce Missa Logo" />
+        </div>
+        <p>Email envoyé automatiquement de la part d'Ecce Missa.</p>
+    </div>
+</body>
+</html>

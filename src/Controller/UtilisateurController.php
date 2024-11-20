@@ -12,13 +12,17 @@ use App\Entity\Utilisateur;
 use App\Repository\UtilisateurRepository;
 use Symfony\Component\Security\Core\User\UserInterface;
 use App\Entity\Paroisse;
+use App\Service\EmailService;
 
 class UtilisateurController extends AbstractController
 {
     private $entityManager;
-    public function __construct(EntityManagerInterface $entityManager)
+    private $emailService;
+
+    public function __construct(EntityManagerInterface $entityManager, EmailService $emailService)
     {
         $this->entityManager = $entityManager;
+        $this->emailService = $emailService;
     }
 
     #[Route('/api/inscription', methods: ['POST'])]
@@ -61,6 +65,8 @@ class UtilisateurController extends AbstractController
         // Enregistrer l'utilisateur dans la base de données
         $entityManager->persist($utilisateur);
         $entityManager->flush();
+
+        $this->emailService->sendCreationCompteEmail($nom, $prenom, $email);
 
         return $this->json(['message' => 'Utilisateur créé avec succès.'], JsonResponse::HTTP_CREATED);
     }

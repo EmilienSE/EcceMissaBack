@@ -1,0 +1,12 @@
+{# templates/emails/registration_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Bienvenue sur Ecce Missa !{% endblock %}
+
+{% block content %}
+    <h1>Bienvenue, {{ user_name }} !</h1>
+    <p>Vous pouvez dès à présent créer une paroisse via votre espace personnel.</p>
+    <p>Si votre paroisse a déjà un espace sur Ecce Missa, vous pouvez la rejoindre grâce à son <strong>code unique</strong>.</p>
+    <p>A bientôt !</p>
+{% endblock %}
