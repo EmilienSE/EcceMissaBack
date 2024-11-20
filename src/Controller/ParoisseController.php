@@ -6,6 +6,7 @@ use App\Entity\Diocese;
 use App\Entity\Paroisse;
 use App\Entity\Utilisateur;
 use App\Repository\ParoisseRepository;
+use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use Stripe\Checkout\Session;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,11 +24,13 @@ class ParoisseController extends AbstractController
 {
     private $entityManager;
     private $paroisseRepository;
+    private $emailService;
 
-    public function __construct(EntityManagerInterface $entityManager, ParoisseRepository $paroisseRepository)
+    public function __construct(EntityManagerInterface $entityManager, ParoisseRepository $paroisseRepository, EmailService $emailService)
     {
         $this->entityManager = $entityManager;
         $this->paroisseRepository = $paroisseRepository;
+        $this->emailService = $emailService;
     }
 
     #[Route('/api/paroisse', name: 'get_paroisses', methods: ['GET'])]
@@ -209,6 +212,8 @@ class ParoisseController extends AbstractController
 
         $this->entityManager->persist($paroisse);
         $this->entityManager->flush();
+
+        $this->emailService->sendParoisseRejointeEmail($user->getNom(), $user->getPrenom(), $paroisse->getNom(), $user->getEmail());
 
         return new JsonResponse(['message' => 'Utilisateur ajouté à la paroisse'], 200);
     }

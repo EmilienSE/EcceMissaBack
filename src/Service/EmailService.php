@@ -44,4 +44,29 @@ class EmailService
 
         $this->mailer->send($email);
     }
+    
+    public function sendParoisseRejointeEmail(string $nom, string $prenom, string $paroisse, string $email): void
+    {
+        $userName = $prenom.' '.$nom;
+        $paroisseName = $paroisse;
+        $userEmail = $email;
+        $subject = 'Paroisse rejointe';
+
+        $htmlContent = $this->twig->render('emails/paroisse_rejointe.html.twig', [
+            'subject' => $subject,
+            'user_name' => $userName,
+            'paroisse_name' => $paroisseName,
+        ]);
+
+        $email = (new Email())
+            ->from($this->from)
+            ->to($this->to)
+            ->subject($subject)
+            ->html($htmlContent);
+
+        $imagePath = 'logo.png';
+        $email->embedFromPath($imagePath, 'logo.png');
+
+        $this->mailer->send($email);
+    }
 }
