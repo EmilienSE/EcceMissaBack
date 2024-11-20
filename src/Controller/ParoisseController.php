@@ -462,9 +462,7 @@ class ParoisseController extends AbstractController
         // Ajouter le texte explicatif
         $pdf->Ln(20);
         $pdf->SetFont($roboto, '', 30);
-        $pdf->Cell(0, 10, 'Pour ce faire, il vous suffit de', 0, 1, 'C');
-        $pdf->Cell(0, 10, 'scanner ce QR Code, et le tour est', 0, 1, 'C');
-        $pdf->Cell(0, 10, 'joué !', 0, 1, 'C');
+        $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
 
         // Ajouter le pied de page
         $pdf->SetFont($oswald, '', 10);
