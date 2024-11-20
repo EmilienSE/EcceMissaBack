@@ -359,4 +359,66 @@ class FeuilletController extends AbstractController
             'Content-Disposition' => 'inline; filename="feuillet.pdf"',
         ]);
     }
+
+    #[Route('/feuillet/paroisse/{paroisseId}/nearest/pdf', name: 'show_nearest_feuillet_pdf_by_paroisse', methods: ['GET'])]
+    public function showNearestFeuilletPdfByParoisse(int $paroisseId): Response
+    {
+        $currentDate = new \DateTime();
+
+        // Récupérer la paroisse par ID
+        $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
+
+        if (!$paroisse) {
+            throw new NotFoundHttpException('Paroisse introuvable.');
+        }
+
+        // Recherche des feuillets avant ou après la date actuelle
+        $feuillets = $this->feuilletRepository->findBy(
+            ['paroisse' => $paroisse],
+            ['celebrationDate' => 'ASC'] // Trier les feuillets par date de célébration
+        );
+
+        // Filtrer et trouver le feuillet le plus proche
+        $nearestFeuillet = null;
+        $smallestDiff = null;
+
+        foreach ($feuillets as $feuillet) {
+            $celebrationDate = $feuillet->getCelebrationDate();
+            $diff = $celebrationDate->diff($currentDate)->format('%r%a'); // Calculer la différence en jours
+
+            // Vérifier si c'est le plus proche
+            if ($smallestDiff === null || abs($diff) < abs($smallestDiff)) {
+                $smallestDiff = $diff;
+                $nearestFeuillet = $feuillet;
+            }
+        }
+
+        if (!$nearestFeuillet || !$nearestFeuillet->getFileUrl()) {
+            throw new NotFoundHttpException('Aucun feuillet disponible pour cette paroisse ou l\'URL du fichier est manquante.');
+        }
+
+        // Récupérer l'URL du fichier PDF
+        $fileUrl = $nearestFeuillet->getFileUrl();
+
+        // Incrémenter le compteur de vues
+        $nearestFeuillet->incrementViewCount();
+        $this->entityManager->persist($nearestFeuillet);
+        $this->entityManager->flush();
+
+        // Télécharger le fichier PDF depuis l'URL
+        $client = new Client(['verify' => false]);
+        try {
+            $response = $client->get($fileUrl);
+        } catch (\Exception $e) {
+            throw new NotFoundHttpException('Fichier introuvable.');
+        }
+
+        $pdfContent = $response->getBody()->getContents();
+
+        return new Response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="feuillet-nearest.pdf"',
+        ]);
+    }
+
 }
