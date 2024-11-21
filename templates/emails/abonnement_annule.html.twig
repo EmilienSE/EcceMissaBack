@@ -1,0 +1,12 @@
+{# templates/emails/registration_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Abonnement annulé{% endblock %}
+
+{% block content %}
+    <h1>Bonjour, {{ user_name }} !</h1>
+    <p>L'abonnement de la paroisse <strong>{{ paroisse }}</strong> a été annulé.</p>
+    <p>Si vous n'êtes pas à l'origine de cette manipulation, veuillez nous contacter au plus vite.</p>
+    <p>A bientôt !</p>
+{% endblock %}

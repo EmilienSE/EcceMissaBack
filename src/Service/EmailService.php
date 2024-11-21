@@ -32,17 +32,8 @@ class EmailService
             'subject' => $subject,
             'user_name' => $userName,
         ]);
-
-        $email = (new Email())
-            ->from($this->from)
-            ->to($this->to)
-            ->subject($subject)
-            ->html($htmlContent);
-
-        $imagePath = 'logo.png';
-        $email->embedFromPath($imagePath, 'logo.png');
-
-        $this->mailer->send($email);
+        
+        $this->send($subject, $htmlContent, $userEmail);
     }
     
     public function sendParoisseRejointeEmail(string $nom, string $prenom, string $paroisse, string $email): void
@@ -57,17 +48,26 @@ class EmailService
             'user_name' => $userName,
             'paroisse_name' => $paroisseName,
         ]);
+        
+        $this->send($subject, $htmlContent, $userEmail);
+    }
+    
+    public function sendNouvelUtilisateurParoisseEmail(string $paroisse, string $prenom, string $nom, string $email, string $nouveauNom, string $nouveauPrenom): void
+    {
+        $userName = $prenom.' '.$nom;
+        $nouveauUserName = $nouveauPrenom.' '.$nouveauNom;
+        $paroisseName = $paroisse;
+        $userEmail = $email;
+        $subject = 'Paroisse rejointe';
 
-        $email = (new Email())
-            ->from($this->from)
-            ->to($this->to)
-            ->subject($subject)
-            ->html($htmlContent);
+        $htmlContent = $this->twig->render('emails/nouvel_utilisateur_paroisse.html.twig', [
+            'subject' => $subject,
+            'user_name' => $userName,
+            'nouveau_user_name' => $nouveauUserName,
+            'paroisse_name' => $paroisseName,
+        ]);
 
-        $imagePath = 'logo.png';
-        $email->embedFromPath($imagePath, 'logo.png');
-
-        $this->mailer->send($email);
+        $this->send($subject, $htmlContent, $userEmail);
     }
     
     public function sendUtilisateurSupprimeEmail(string $nom, string $prenom, string $email): void
@@ -121,6 +121,36 @@ class EmailService
         $subject = 'Le paiement pour la paroisse '.$paroisse.' a bien été effectué.';
 
         $htmlContent = $this->twig->render('emails/succes_paiement.html.twig', [
+            'paroisse' => $paroisse,
+            'user_name' => $userName,
+            'subject' => $subject,
+        ]);
+
+        $this->send($subject, $htmlContent, $userEmail);
+    }
+    
+    public function sendAbonnementAnnuleEmail(string $paroisse, string $prenom, string $nom, string $email): void
+    {
+        $userName = $prenom.' '.$nom;
+        $userEmail = $email;
+        $subject = "L'abonnement de la paroisse ".$paroisse." a été annulé.";
+
+        $htmlContent = $this->twig->render('emails/abonnement_annule.html.twig', [
+            'paroisse' => $paroisse,
+            'user_name' => $userName,
+            'subject' => $subject,
+        ]);
+
+        $this->send($subject, $htmlContent, $userEmail);
+    }
+
+    public function sendParoisseSupprimeeEmail(string $paroisse, string $prenom, string $nom, string $email): void
+    {
+        $userName = $prenom.' '.$nom;
+        $userEmail = $email;
+        $subject = "La paroisse ".$paroisse." a été supprimée d'Ecce Missa.";
+
+        $htmlContent = $this->twig->render('emails/paroisse_supprimee.html.twig', [
             'paroisse' => $paroisse,
             'user_name' => $userName,
             'subject' => $subject,

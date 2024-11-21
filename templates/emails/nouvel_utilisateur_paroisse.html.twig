@@ -1,0 +1,11 @@
+{# templates/emails/registration_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Un nouvel utilisateur a rejoint la paroisse{% endblock %}
+
+{% block content %}
+    <h1>Bonjour, {{ user_name }} !</h1>
+    <p><strong>{{ nouveau_user_name }}</strong> vient de rejoindre la paroisse <strong>{{ paroisse_name }}</strong>.</p>
+    <p>A bientôt !</p>
+{% endblock %}

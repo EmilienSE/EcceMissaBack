@@ -121,6 +121,10 @@ class StripeWebhookController extends AbstractController
                         $paroisse->setPaiementAJour(false);
                         $this->entityManager->persist($paroisse);
                         $this->entityManager->flush();
+
+                        foreach($paroisse->getResponsable() as $responsable) {
+                            $this->emailService->sendAbonnementAnnuleEmail($paroisse->getNom(), $responsable->getPrenom(), $responsable->getNom(), $responsable->getEmail());
+                        }
                     }
                 }
                 break;

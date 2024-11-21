@@ -111,6 +111,10 @@ class ParoisseController extends AbstractController
         }
 
         foreach($paroisse->getResponsable() as $responsable) {
+            $this->emailService->sendParoisseSupprimeeEmail($paroisse->getNom(), $responsable->getPrenom(), $responsable->getNom(), $responsable->getEmail());
+        }
+
+        foreach($paroisse->getResponsable() as $responsable) {
             $paroisse->removeResponsable($responsable);
         }
 
@@ -172,7 +176,8 @@ class ParoisseController extends AbstractController
                     'metadata' => [
                         'paroisse_id' => $paroisse->getId()
                     ]
-                ]
+                ],
+                "allow_promotion_codes" => true
             ]);
             
             // Répondre avec l'ID de la session pour le frontend
@@ -207,6 +212,10 @@ class ParoisseController extends AbstractController
 
         if (!$paroisse) {
             return new JsonResponse(['error' => 'Paroisse introuvable avec ce code'], 404);
+        }
+
+        foreach($paroisse->getResponsable() as $responsable) {
+            $this->emailService->sendNouvelUtilisateurParoisseEmail($paroisse->getNom(), $responsable->getPrenom(), $responsable->getNom(), $responsable->getEmail(), $user->getNom(), $user->getPrenom());
         }
 
         // Ajouter l'utilisateur à la paroisse
