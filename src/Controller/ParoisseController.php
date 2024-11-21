@@ -88,6 +88,8 @@ class ParoisseController extends AbstractController
         $codeUnique = strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
         $paroisse->setCodeUnique($codeUnique);
 
+        $this->emailService->sendParoisseAjouteeEmail($nom, $user->getPrenom(), $user->getNom(), $user->getEmail());
+
         $this->entityManager->persist($paroisse);
         $this->entityManager->flush();
 

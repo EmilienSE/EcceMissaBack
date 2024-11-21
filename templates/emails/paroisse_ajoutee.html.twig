@@ -1,0 +1,13 @@
+{# templates/emails/registration_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Paroisse {{ paroisse }} rejointe{% endblock %}
+
+{% block content %}
+    <h1>Bonjour, {{ user_name }} !</h1>
+    <p>Vous venez d'ajouter la paroisse <strong>{{ paroisse }}</strong> sur Ecce Missa.</p>
+    <p>Si vous avez opté pour le prélèvement bancaire et que l'état de votre compte est toujours "A régulariser", pas d'inquiétude, la validation de la banque peut prendre quelques jours.</p>
+    <p>Nous vous notifierons dès validation du prélèvement.</p>
+    <p>A bientôt !</p>
+{% endblock %}

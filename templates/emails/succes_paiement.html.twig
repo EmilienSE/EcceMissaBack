@@ -1,0 +1,12 @@
+{# templates/emails/registration_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Paiement effectué{% endblock %}
+
+{% block content %}
+    <h1>Bonjour, {{ user_name }} !</h1>
+    <p>Le paiement pour la paroisse <strong>{{ paroisse }}</strong> a bien été effectué.</p>
+    <p>Vous pouvez dès à présent ajouter des feuillets.</p>
+    <p>A bientôt !</p>
+{% endblock %}

@@ -81,11 +81,61 @@ class EmailService
             'user_name' => $userName,
         ]);
 
+        $this->send($subject, $htmlContent, $userEmail);
+    }
+    
+    public function sendParoisseAjouteeEmail(string $paroisse, string $prenom, string $nom, string $email): void
+    {
+        $userName = $prenom.' '.$nom;
+        $userEmail = $email;
+        $subject = 'La paroisse '.$paroisse.' a bien été ajoutée.';
+
+        $htmlContent = $this->twig->render('emails/paroisse_ajoutee.html.twig', [
+            'paroisse' => $paroisse,
+            'user_name' => $userName,
+            'subject' => $subject,
+        ]);
+
+        $this->send($subject, $htmlContent, $userEmail);
+    }
+    
+    public function sendEchecPaiementEmail(string $paroisse, string $prenom, string $nom, string $email): void
+    {
+        $userName = $prenom.' '.$nom;
+        $userEmail = $email;
+        $subject = 'Le paiement pour la paroisse '.$paroisse.' a échoué.';
+
+        $htmlContent = $this->twig->render('emails/echec_paiement.html.twig', [
+            'paroisse' => $paroisse,
+            'user_name' => $userName,
+            'subject' => $subject,
+        ]);
+
+        $this->send($subject, $htmlContent, $userEmail);
+    }
+    
+    public function sendSuccesPaiementEmail(string $paroisse, string $prenom, string $nom, string $email): void
+    {
+        $userName = $prenom.' '.$nom;
+        $userEmail = $email;
+        $subject = 'Le paiement pour la paroisse '.$paroisse.' a bien été effectué.';
+
+        $htmlContent = $this->twig->render('emails/succes_paiement.html.twig', [
+            'paroisse' => $paroisse,
+            'user_name' => $userName,
+            'subject' => $subject,
+        ]);
+
+        $this->send($subject, $htmlContent, $userEmail);
+    }
+
+    private function send(string $subject, string $htmlContent, string $to): void
+    {
         $email = (new Email())
-            ->from($this->from)
-            ->to($this->to)
-            ->subject($subject)
-            ->html($htmlContent);
+        ->from($this->from)
+        ->to($this->to)
+        ->subject($subject)
+        ->html($htmlContent);
 
         $imagePath = 'logo.png';
         $email->embedFromPath($imagePath, 'logo.png');

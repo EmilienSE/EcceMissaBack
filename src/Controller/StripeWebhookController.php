@@ -10,14 +10,17 @@ use App\Repository\ParoisseRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Stripe\Webhook;
 use App\Entity\Paroisse;
+use App\Service\EmailService;
 
 class StripeWebhookController extends AbstractController
 {
     private $entityManager;
+    private $emailService;
 
-    public function __construct(EntityManagerInterface $entityManager)
+    public function __construct(EntityManagerInterface $entityManager, EmailService $emailService)
     {
         $this->entityManager = $entityManager;
+        $this->emailService = $emailService;
     }
 
     #[Route('/webhook/stripe', name: 'stripe_webhook', methods: ['POST'])]
@@ -43,6 +46,27 @@ class StripeWebhookController extends AbstractController
 
         // Gérer différents types d'événements Stripe
         switch ($event->type) {
+            case 'invoice.payment_failed':
+                $invoice = $event->data->object; // Contient les informations de la facture
+                
+                // Vous pouvez obtenir le champ `metadata` de la facture pour identifier la paroisse
+                $paroisseId = $invoice->subscription_details->metadata->paroisse_id ?? null;
+
+                if ($paroisseId) {
+                    $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
+
+                    if ($paroisse) {
+                        $paroisse->setPaiementAJour(false);
+                        $this->entityManager->persist($paroisse);
+                        $this->entityManager->flush();
+
+                        foreach($paroisse->getResponsable() as $responsable) {
+                            $this->emailService->sendEchecPaiementEmail($paroisse->getNom(), $responsable->getPrenom(), $responsable->getNom(), $responsable->getEmail());
+                        }
+                    }
+                }
+
+                break;
             case 'invoice.payment_succeeded':
                 $invoice = $event->data->object; // Contient les informations de la facture
                 
@@ -57,6 +81,10 @@ class StripeWebhookController extends AbstractController
                         $paroisse->setPaiementAJour(true);
                         $this->entityManager->persist($paroisse);
                         $this->entityManager->flush();
+
+                        foreach($paroisse->getResponsable() as $responsable) {
+                            $this->emailService->sendSuccesPaiementEmail($paroisse->getNom(), $responsable->getPrenom(), $responsable->getNom(), $responsable->getEmail());
+                        }
                     }
                 }
                 break;
@@ -97,7 +125,6 @@ class StripeWebhookController extends AbstractController
                 }
                 break;
             default:
-                // Gérer d'autres événements
                 break;
         }
 

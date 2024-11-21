@@ -1,0 +1,14 @@
+{# templates/emails/registration_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Paiement échoué{% endblock %}
+
+{% block content %}
+    <h1>Bonjour, {{ user_name }} !</h1>
+    <p>Nous vous informons que le paiement pour la paroisse <strong>{{ paroisse }}</strong> a échoué.</p>
+    <p>Nous vous invitons à vous connecter sur votre espace personnel afin de régulariser le paiement.</p>
+    <p>Pendant ce temps, l'ajout de feuillets est temporairement désactivé, en attente de la mise à jour du paiement.</p>
+    <p>Merci pour votre compréhension et votre collaboration. N'hésitez pas à nous contacter si vous avez besoin d'assistance.</p>
+    <p>A bientôt !</p>
+{% endblock %}
