@@ -29,7 +29,7 @@ class FeuilletController extends AbstractController
     }
 
     #[Route('/api/feuillet', name: 'get_feuillet', methods: ['GET'])]
-    public function index(UserInterface $user): JsonResponse
+    public function index(Request $request, UserInterface $user): JsonResponse
     {
         // Récupérer la paroisse de l'utilisateur
         $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user->getId())->getParoisse();
@@ -42,27 +42,47 @@ class FeuilletController extends AbstractController
         if (!$paroisse->isPaiementAJour()) {
             return new JsonResponse(['error' => 'Le paiement de la paroisse n\'est pas à jour.'], 403);
         }
+    
+        // Récupération des paramètres de pagination
+        $page = max(1, (int) $request->query->get('page', 1)); // Par défaut 1
+        $size = max(1, (int) $request->query->get('size', 5)); // Par défaut 5
 
-        // Récupérer les feuillets associés à la paroisse de l'utilisateur
-        $feuillets = $this->feuilletRepository->findBy(['paroisse' => $paroisse]);
+        $offset = ($page - 1) * $size;
+
+        // Requête paginée pour les feuillets
+        $feuillets = $this->feuilletRepository->findBy(
+            ['paroisse' => $paroisse],
+            ['id' => 'DESC'],
+            $size,
+            $offset
+        );
+
+        // Calcul du nombre total de feuillets pour cette paroisse
+        $totalFeuillets = $this->feuilletRepository->count(['paroisse' => $paroisse]);
+
         $data = [];
-
         foreach ($feuillets as $feuillet) {
             $data[] = [
                 'id' => $feuillet->getId(),
+                'description' => $feuillet->getDescription(),
                 'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
                 'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
-                'fileUrl' => $feuillet->getFileUrl(),
-                'viewCount' => $feuillet->getViewCount()
             ];
         }
 
-        usort($data, function ($a, $b) {
-            return strtotime($b['celebrationDate']) - strtotime($a['celebrationDate']);
-        });
+        // Inclure des métadonnées pour la pagination
+        $response = [
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $page,
+                'page_size' => $size,
+                'total_items' => $totalFeuillets,
+                'total_pages' => ceil($totalFeuillets / $size),
+            ],
+        ];
 
-        return new JsonResponse($data);
+        return new JsonResponse($response);
     }
 
     #[Route('/api/feuillet/{id}', name: 'get_feuillet_by_id', methods: ['GET'])]
