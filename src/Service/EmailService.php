@@ -18,8 +18,8 @@ class EmailService
     {
         $this->mailer = $mailer;
         $this->twig = $twig;
-        $this->from = "test@demomailtrap.com";
-        $this->to = "mcdeux49@gmail.com";
+        $this->from = "contact@eccemissa.fr";
+        $this->to = "contact@eccemissa.fr";
     }
 
     public function sendCreationCompteEmail(string $nom, string $prenom, string $email): void
@@ -158,14 +158,34 @@ class EmailService
 
         $this->send($subject, $htmlContent, $userEmail);
     }
+    
+    public function sendContactEmail(string $phone, string $message, string $prenom, string $nom, string $email): void
+    {
+        $subject = "Nouveau contact sur Ecce Missa";
 
-    private function send(string $subject, string $htmlContent, string $to): void
+        $htmlContent = $this->twig->render('emails/contact.html.twig', [
+            'nom' => $nom,
+            'prenom' => $prenom,
+            'email' => $email,
+            'phone' => $phone,
+            'message' => $message,
+            'subject' => $subject,
+        ]);
+
+        $this->send($subject, $htmlContent, $this->to, $email);
+    }
+
+    private function send(string $subject, string $htmlContent, string $to, ?string $replyTo = null): void
     {
         $email = (new Email())
         ->from($this->from)
-        ->to($this->to)
+        ->to($to)
         ->subject($subject)
         ->html($htmlContent);
+
+        if ($replyTo) {
+            $email->replyTo($replyTo);
+        }
 
         $imagePath = 'logo.png';
         $email->embedFromPath($imagePath, 'logo.png');

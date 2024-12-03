@@ -67,7 +67,9 @@ class FeuilletController extends AbstractController
                 'description' => $feuillet->getDescription(),
                 'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
                 'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
-                'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
+                'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getNom() : null,
+                'fileUrl' => $feuillet->getFileUrl(),
+                'viewCount' => $feuillet->getViewCount()
             ];
         }
 

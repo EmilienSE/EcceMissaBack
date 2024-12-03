@@ -1,0 +1,15 @@
+{# templates/emails/contact_email.html.twig #}
+
+{% extends 'emails/base.html.twig' %}
+
+{% block title %}Nouveau contact sur Ecce Missa{% endblock %}
+
+{% block content %}
+    <h1>Bonjour,</h1>
+    <p>Vous avez une nouvelle demande de contact via le site internet :</p>
+    <p>Nom et prénom : <strong>{{ nom }} {{ prenom }}</strong></p>
+    <p>Adresse mail : <strong>{{ email }}</strong></p>
+    <p>Numéro de téléphone : <strong>{{ phone }}</strong></p>
+    <p>Message : {{ message }}</p>
+    <p>A bientôt !</p>
+{% endblock %}
