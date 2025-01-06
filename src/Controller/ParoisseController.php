@@ -18,6 +18,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Stripe\Stripe;
 use Stripe\Customer;
+use Stripe\BillingPortal\Session as BillingSession;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class ParoisseController extends AbstractController
@@ -150,7 +151,7 @@ class ParoisseController extends AbstractController
             // Création d'un client Stripe uniquement si la paroisse n'en a pas déjà un
             if (is_null($paroisse->getStripeCustomerId())) {
                 $customer = Customer::create([
-                    'description' => 'Client pour la paroisse '.$paroisse->getNom()
+                    'description' => $paroisse->getNom().' - '.$paroisse->getDiocese()->getNom()
                 ]);
                 $paroisse->setStripeCustomerId($customer->id);
                 $this->entityManager->persist($paroisse);
@@ -158,12 +159,13 @@ class ParoisseController extends AbstractController
             }
 
             $session = Session::create([
-                'success_url' => 'http://localhost:4200/paroisse', // /success?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => 'http://localhost:4200/paroisse/fail',
+                'success_url' => 'https://app.eccemissa.fr/paroisse', // /success?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => 'https://app.eccemissa.fr/paroisse/fail',
+                'customer' => $customer->id,
                 'mode' => 'subscription',
                 'payment_method_types' => ['card', 'sepa_debit'],
                 'line_items' => [[
-                    'price' => 'price_1Q7XV3E8TPrVnm48J30MCsnl',
+                    'price' => 'price_1QRavwE8TPrVnm48HByt8DnE',
                     'quantity' => 1,
                 ]],
                 'subscription_data' => [
@@ -359,19 +361,20 @@ class ParoisseController extends AbstractController
         try {
             // Création d'une nouvelle session de paiement pour régulariser
             $session = Session::create([
-                'success_url' => 'http://localhost:4200/paroisse',  // Rediriger vers une page de succès
-                'cancel_url' => 'http://localhost:4200/paroisse',     // Rediriger en cas d'échec
+                'success_url' => 'https://app.eccemissa.fr/paroisse',  // Rediriger vers une page de succès
+                'cancel_url' => 'https://app.eccemissa.fr/paroisse',     // Rediriger en cas d'échec
                 'mode' => 'subscription',
                 'payment_method_types' => ['card', 'sepa_debit'],
                 'line_items' => [[
-                    'price' => 'price_1Q7XV3E8TPrVnm48J30MCsnl',
+                    'price' => 'price_1QRavwE8TPrVnm48HByt8DnE',
                     'quantity' => 1,
                 ]],
                 'subscription_data' => [
                     'metadata' => [
                         'paroisse_id' => $paroisse->getId(),
                     ]
-                ]
+                ],
+                "allow_promotion_codes" => true
             ]);
 
             // Retourner le lien de paiement pour permettre au frontend de rediriger l'utilisateur
@@ -401,17 +404,18 @@ class ParoisseController extends AbstractController
         }
 
         // Configurer la clé API Stripe
-        \Stripe\Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+        Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
 
         try {
             // Créer une session du portail de facturation Stripe pour le client
-            $session = \Stripe\BillingPortal\Session::create([
+            $session = BillingSession::create([
                 'customer' => $paroisse->getStripeCustomerId(),
-                'return_url' => 'http://localhost:4200/paroisse',  // URL vers laquelle rediriger l'utilisateur après la gestion de son abonnement
+                'return_url' => 'https://app.eccemissa.fr/paroisse',  // URL vers laquelle rediriger l'utilisateur après la gestion de son abonnement
             ]);
 
             // Retourner le lien de redirection vers le portail de facturation
             return new JsonResponse([
+                'customer' => $paroisse->getStripeCustomerId(),
                 'billingPortalLink' => $session->url,
             ], 200);
 

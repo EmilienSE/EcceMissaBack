@@ -79,6 +79,7 @@ class StripeWebhookController extends AbstractController
                     if ($paroisse) {
                         // Mettre à jour l'état du paiement de la paroisse
                         $paroisse->setPaiementAJour(true);
+                        $paroisse->setStripeCustomerId($invoice->customer);
                         $this->entityManager->persist($paroisse);
                         $this->entityManager->flush();
 
