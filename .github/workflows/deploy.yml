@@ -34,7 +34,7 @@ jobs:
       # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
       - name: Install Composer dependancies - Clear Symfony cache - Run migrations - Create .env.prod
         run: |
-          ssh ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
+          ssh -T ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
             cd testapi
             curl -sS https://getcomposer.org/installer | php
             php composer.phar install --no-dev --optimize-autoloader
