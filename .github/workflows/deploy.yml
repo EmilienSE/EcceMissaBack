@@ -9,9 +9,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Debug secrets
-        run: env
-
       # Vérifier le code source depuis GitHub
       - name: Checkout code PHp
         uses: actions/checkout@v2
