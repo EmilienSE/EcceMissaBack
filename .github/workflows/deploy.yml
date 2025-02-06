@@ -9,6 +9,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug secrets
+        run: env | grep OVH_
+
       # Vérifier le code source depuis GitHub
       - name: Checkout code PHp
         uses: actions/checkout@v2
@@ -19,10 +22,6 @@ jobs:
         with:
           php-version: '8.2'  # Remplacez par la version PHP que vous utilisez
           extensions: mbstring, xml, bcmath
-      
-      - name: 'verif variables'
-        run: |
-          echo ${{ secrets.OVH_FTP_HOST }}
 
       # Déployer via FTP
       - name: Deploy to OVH via FTP
