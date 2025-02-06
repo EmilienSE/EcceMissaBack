@@ -34,7 +34,7 @@ jobs:
       # Installer Composer
       - name: Install dependencies with Composer
         run: |
-          cd /testapi
+          cd testapi
           curl -sS https://getcomposer.org/installer | php
           php composer.phar install --no-dev --optimize-autoloader
 
@@ -42,7 +42,7 @@ jobs:
       - name: Clear Symfony cache - run migrations - create .env.prod
         run: |
           ssh ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
-            cd /testapi
+            cd testapi
             echo "DATABASE_URL=${{ secrets.RECETTE_DATABASE_URL }}" >> .env.prod
             echo "S3_KEY=${{ secrets.RECETTE_S3_KEY }}" >> .env.prod
             echo "S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}" >> .env.prod
