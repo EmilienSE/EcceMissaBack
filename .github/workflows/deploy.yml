@@ -30,6 +30,11 @@ jobs:
           local-dir: ./  # Répertoire local à déployer
           server-dir: /testapi/  # Répertoire distant sur votre serveur OVH
           dry-run: false  # Déploiement réel, pas en mode simulation
+        
+      - name: Add SSH host key to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.OVH_SSH_HOST }} >> ~/.ssh/known_hosts
 
       # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
       - name: Install Composer dependancies - Clear Symfony cache - Run migrations - Create .env.prod
