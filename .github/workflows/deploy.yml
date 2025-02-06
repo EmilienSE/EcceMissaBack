@@ -1,0 +1,44 @@
+name: Deploy Symfony to OVH
+
+on:
+  push:
+    branches:
+      - main # ou la branche que vous souhaitez déployer
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Vérifier le code source depuis GitHub
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Installer Composer (si nécessaire)
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'  # Remplacez par la version PHP que vous utilisez
+          extensions: mbstring, xml, bcmath
+
+      # Installer Composer
+      - name: Install dependencies with Composer
+        run: |
+          curl -sS https://getcomposer.org/installer | php
+          php composer.phar install --no-dev --optimize-autoloader
+
+      # Connexion SSH à votre hébergement OVH
+      # - name: Deploy to OVH via SSH
+      #   uses: appleboy/ssh-action@v0.1.5
+      #   with:
+      #     host: ${{ secrets.OVH_HOST }}
+      #     username: ${{ secrets.OVH_USERNAME }}
+      #     key: ${{ secrets.OVH_PRIVATE_KEY }}
+      #     script: |
+      #       cd /path/to/your/project
+      #       git pull origin main # Récupérer les dernières modifications
+      #       composer install --no-dev --optimize-autoloader
+      #       php bin/console cache:clear --env=prod
+      #       php bin/console doctrine:migrations:migrate --env=prod
+      #       php bin/console assets:install --env=prod
+      #       # Ajoutez d'autres commandes selon vos besoins
+
