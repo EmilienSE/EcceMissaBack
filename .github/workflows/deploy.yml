@@ -9,12 +9,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      FTP_HOST: ${{ secrets.OVH_FTP_HOST }}
+      OVH_FTP_HOST: ${{ secrets.OVH_FTP_HOST }}
 
     steps:
       - name: Debug secrets presence
         run: |
-          if [ -z "${{ secrets.OVH_FTP_HOST }}" ]; then
+          if [ -z "$OVH_FTP_HOST" ]; then
             echo "❌ Secret OVH_FTP_HOST est vide ou non défini"
             exit 1
           else
