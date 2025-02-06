@@ -24,12 +24,13 @@ jobs:
       - name: Deploy to OVH via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.0.0
         with:
-          host: ${{ secrets.OVH_FTP_HOST }}        # Ajoutez l'URL ou l'IP de votre serveur FTP OVH
-          username: ${{ secrets.OVH_FTP_USERNAME }}  # Ajoutez votre nom d'utilisateur FTP
-          password: ${{ secrets.OVH_FTP_PASSWORD }}  # Ajoutez votre mot de passe FTP
-          local-dir: ./   # Répertoire local à déployer, par exemple './' pour tout le projet
-          remote-dir: /home/eccemiz/testapi  # Répertoire distant sur votre serveur OVH (généralement le dossier 'public_html')
-          passive: true   # Activez si nécessaire pour votre serveur FTP
+          ftp-server: ${{ secrets.OVH_FTP_HOST }}  # Hôte FTP
+          ftp-username: ${{ secrets.OVH_FTP_USERNAME }}  # Nom d'utilisateur FTP
+          ftp-password: ${{ secrets.OVH_FTP_PASSWORD }}  # Mot de passe FTP
+          local-dir: ./  # Répertoire local à déployer
+          remote-dir: /path/to/your/public_html  # Répertoire distant sur votre serveur OVH
+          dry-run: false  # Déploiement réel, pas en mode simulation
+
 
       # Créer un fichier .env.prod avec les valeurs nécessaires
       - name: Create .env.prod
