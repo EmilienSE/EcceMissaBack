@@ -24,9 +24,9 @@ jobs:
       - name: Deploy to OVH via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.0.0
         with:
-          ftp-server: ${{ secrets.OVH_FTP_HOST }}  # Hôte FTP
-          ftp-username: ${{ secrets.OVH_FTP_USERNAME }}  # Nom d'utilisateur FTP
-          ftp-password: ${{ secrets.OVH_FTP_PASSWORD }}  # Mot de passe FTP
+          server: ${{ secrets.OVH_FTP_HOST }}  # Hôte FTP
+          username: ${{ secrets.OVH_FTP_USERNAME }}  # Nom d'utilisateur FTP
+          password: ${{ secrets.OVH_FTP_PASSWORD }}  # Mot de passe FTP
           local-dir: ./  # Répertoire local à déployer
           remote-dir: /path/to/your/public_html  # Répertoire distant sur votre serveur OVH
           dry-run: false  # Déploiement réel, pas en mode simulation
