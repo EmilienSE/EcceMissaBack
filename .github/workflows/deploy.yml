@@ -22,7 +22,7 @@ jobs:
 
       # Déployer via FTP
       - name: Deploy to OVH via FTP
-        uses: appleboy/ftp-action@v1.0.0
+        uses: SamKirkland/FTP-Deploy-Action@4.0.0
         with:
           host: ${{ secrets.OVH_FTP_HOST }}        # Ajoutez l'URL ou l'IP de votre serveur FTP OVH
           username: ${{ secrets.OVH_FTP_USERNAME }}  # Ajoutez votre nom d'utilisateur FTP
