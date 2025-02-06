@@ -48,12 +48,36 @@ jobs:
       - name: Install sshpass
         run: sudo apt-get install sshpass
 
+      # Installer PHP 8.2 et Composer sur le serveur OVH à chaque déploiement
+      - name: Install PHP 8.2 and Composer on OVH server
+        run: |
+          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
+            # Mettre à jour les sources
+            sudo apt update
+
+            # Installer PHP 8.2 et ses extensions
+            sudo apt install -y php8.2 php8.2-cli php8.2-mbstring php8.2-xml php8.2-bcmath
+
+            # Installer Composer
+            curl -sS https://getcomposer.org/installer | php
+            sudo mv composer.phar /usr/local/bin/composer
+
+            # Vérifier l'installation de PHP et Composer
+            php -v
+            composer --version
+          EOF
+
       # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
       - name: Install Composer dependancies - Clear Symfony cache - Run migrations - Create .env.prod
         run: |
           sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 << 'EOF'
             cd testapi
+
+            php -v
+            composer --version
+
             composer install --no-dev --optimize-autoloader
+
             echo "DATABASE_URL=${{ secrets.RECETTE_DATABASE_URL }}" >> .env.prod
             echo "S3_KEY=${{ secrets.RECETTE_S3_KEY }}" >> .env.prod
             echo "S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}" >> .env.prod
@@ -62,6 +86,7 @@ jobs:
             echo "STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}" >> .env.prod
             echo "STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}" >> .env.prod
             echo "MAILER_DSN=${{ secrets.RECETTE_MAILER_DSN }}" >> .env.prod
+            
             php bin/console cache:clear --env=prod
             php bin/console doctrine:migrations:migrate --env=prod
             php bin/console assets:install --env=prod
