@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Debug secrets
-        run: env | grep OVH_
+        run: env
 
       # Vérifier le code source depuis GitHub
       - name: Checkout code PHp
