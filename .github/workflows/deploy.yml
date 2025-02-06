@@ -13,12 +13,19 @@ jobs:
       - name: Checkout code PHp
         uses: actions/checkout@v2
 
-      # Installer Composer (si nécessaire)
+      # Installer PHP
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'  # Remplacez par la version PHP que vous utilisez
           extensions: mbstring, xml, bcmath
+
+      
+      # Installer Composer
+      - name: Install Composer
+        run: |
+          curl -sS https://getcomposer.org/installer | php
+          sudo mv composer.phar /usr/local/bin/composer
 
       # Déployer via FTP
       - name: Deploy to OVH via FTP
@@ -46,8 +53,7 @@ jobs:
         run: |
           sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 << 'EOF'
             cd testapi
-            curl -sS https://getcomposer.org/installer | php
-            php composer.phar install --no-dev --optimize-autoloader
+            composer install --no-dev --optimize-autoloader
             echo "DATABASE_URL=${{ secrets.RECETTE_DATABASE_URL }}" >> .env.prod
             echo "S3_KEY=${{ secrets.RECETTE_S3_KEY }}" >> .env.prod
             echo "S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}" >> .env.prod
