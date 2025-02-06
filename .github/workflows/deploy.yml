@@ -20,25 +20,28 @@ jobs:
           php-version: '8.2'  # Remplacez par la version PHP que vous utilisez
           extensions: mbstring, xml, bcmath
 
-      # Installer Composer
-      - name: Install dependencies with Composer
+      # Créer un fichier .env.prod avec les valeurs nécessaires
+      - name: Create .env.prod
         run: |
-          curl -sS https://getcomposer.org/installer | php
-          php composer.phar install --no-dev --optimize-autoloader
+          echo "DATABASE_URL=${{ secrets.RECETTE_DATABASE_URL }}" >> .env.prod
+          echo "S3_KEY=${{ secrets.RECETTE_S3_KEY }}" >> .env.prod
+          echo "S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}" >> .env.prod
+          echo "S3_REGION=${{ secrets.RECETTE_S3_REGION }}" >> .env.prod
+          echo "S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}" >> .env.prod
+          echo "STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}" >> .env.prod
+          echo "STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}" >> .env.prod
+          echo "MAILER_DSN=${{ secrets.RECETTE_MAILER_DSN }}" >> .env.prod
 
-      # Connexion SSH à votre hébergement OVH
-      # - name: Deploy to OVH via SSH
-      #   uses: appleboy/ssh-action@v0.1.5
-      #   with:
-      #     host: ${{ secrets.OVH_HOST }}
-      #     username: ${{ secrets.OVH_USERNAME }}
-      #     key: ${{ secrets.OVH_PRIVATE_KEY }}
-      #     script: |
-      #       cd /path/to/your/project
-      #       git pull origin main # Récupérer les dernières modifications
-      #       composer install --no-dev --optimize-autoloader
-      #       php bin/console cache:clear --env=prod
-      #       php bin/console doctrine:migrations:migrate --env=prod
-      #       php bin/console assets:install --env=prod
-      #       # Ajoutez d'autres commandes selon vos besoins
+      # Installer Composer
+      - name: /home/eccemiz/testapi  # Répertoire distant sur votre serveur OVH (généralement le dossier 'public_html')
+          passive: true   # Activez si nécessaire pour votre serveur FTP
 
+      # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
+      - name: Clear Symfony cache and run migrations
+        run: |
+          ssh ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
+            cd /home/eccemiz/testapi
+            php bin/console cache:clear --env=prod
+            php bin/console doctrine:migrations:migrate --env=prod
+            php bin/console assets:install --env=prod
+          EOF
