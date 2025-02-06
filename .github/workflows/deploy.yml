@@ -52,19 +52,25 @@ jobs:
       - name: Install PHP 8.2 and Composer on OVH server
         run: |
           sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
-            # Mettre à jour les sources
-            sudo apt update
+            # Télécharger PHP 8.2 et installer localement
+            wget https://www.php.net/distributions/php-8.2.0.tar.bz2
+            tar -xjf php-8.2.0.tar.bz2
+            cd php-8.2.0
+            ./configure --prefix=$HOME/php --enable-mbstring --enable-xml --enable-bcmath
+            make -j$(nproc)
+            make install
 
-            # Installer PHP 8.2 et ses extensions
-            sudo apt install -y php8.2 php8.2-cli php8.2-mbstring php8.2-xml php8.2-bcmath
+            # Ajouter PHP au PATH
+            export PATH=$HOME/php/bin:$PATH
 
-            # Installer Composer
+            # Télécharger Composer et l'installer localement
             curl -sS https://getcomposer.org/installer | php
-            sudo mv composer.phar /usr/local/bin/composer
+            mv composer.phar $HOME/bin/composer
+            export PATH=$HOME/bin:$PATH
 
             # Vérifier l'installation de PHP et Composer
             php -v
-            composer --version
+            composer --version 
           EOF
 
       # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
