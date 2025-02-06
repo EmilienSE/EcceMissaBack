@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Vérifier le code source depuis GitHub
-      - name: Checkout code
+      - name: Checkout code PHp
         uses: actions/checkout@v2
 
       # Installer Composer (si nécessaire)
