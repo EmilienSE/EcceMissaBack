@@ -8,19 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      OVH_FTP_HOST: ${{ secrets.OVH_FTP_HOST }}
-
     steps:
-      - name: Debug secrets presence
-        run: |
-          if [ -z "$OVH_FTP_HOST" ]; then
-            echo "❌ Secret OVH_FTP_HOST est vide ou non défini"
-            exit 1
-          else
-            echo "✅ Secret OVH_FTP_HOST est bien défini"
-          fi
-
       # Vérifier le code source depuis GitHub
       - name: Checkout code PHp
         uses: actions/checkout@v2
@@ -40,7 +28,7 @@ jobs:
           username: ${{ secrets.OVH_FTP_USERNAME }}  # Nom d'utilisateur FTP
           password: ${{ secrets.OVH_FTP_PASSWORD }}  # Mot de passe FTP
           local-dir: ./  # Répertoire local à déployer
-          server-dir: /home/eccemiz/testapi  # Répertoire distant sur votre serveur OVH
+          server-dir: /home/eccemiz/testapi/  # Répertoire distant sur votre serveur OVH
           dry-run: false  # Déploiement réel, pas en mode simulation
 
 
