@@ -28,34 +28,29 @@ jobs:
           username: ${{ secrets.OVH_FTP_USERNAME }}  # Nom d'utilisateur FTP
           password: ${{ secrets.OVH_FTP_PASSWORD }}  # Mot de passe FTP
           local-dir: ./  # Répertoire local à déployer
-          server-dir: /home/eccemiz/testapi/  # Répertoire distant sur votre serveur OVH
+          server-dir: /testapi/  # Répertoire distant sur votre serveur OVH
           dry-run: false  # Déploiement réel, pas en mode simulation
-
-
-      # Créer un fichier .env.prod avec les valeurs nécessaires
-      - name: Create .env.prod
-        run: |
-          echo "DATABASE_URL=${{ secrets.RECETTE_DATABASE_URL }}" >> .env.prod
-          echo "S3_KEY=${{ secrets.RECETTE_S3_KEY }}" >> .env.prod
-          echo "S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}" >> .env.prod
-          echo "S3_REGION=${{ secrets.RECETTE_S3_REGION }}" >> .env.prod
-          echo "S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}" >> .env.prod
-          echo "STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}" >> .env.prod
-          echo "STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}" >> .env.prod
-          echo "MAILER_DSN=${{ secrets.RECETTE_MAILER_DSN }}" >> .env.prod
 
       # Installer Composer
       - name: Install dependencies with Composer
         run: |
-          cd /home/eccemiz/testapi
+          cd /testapi
           curl -sS https://getcomposer.org/installer | php
           php composer.phar install --no-dev --optimize-autoloader
 
       # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
-      - name: Clear Symfony cache and run migrations
+      - name: Clear Symfony cache - run migrations - create .env.prod
         run: |
           ssh ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
-            cd /home/eccemiz/testapi
+            cd /testapi
+            echo "DATABASE_URL=${{ secrets.RECETTE_DATABASE_URL }}" >> .env.prod
+            echo "S3_KEY=${{ secrets.RECETTE_S3_KEY }}" >> .env.prod
+            echo "S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}" >> .env.prod
+            echo "S3_REGION=${{ secrets.RECETTE_S3_REGION }}" >> .env.prod
+            echo "S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}" >> .env.prod
+            echo "STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}" >> .env.prod
+            echo "STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}" >> .env.prod
+            echo "MAILER_DSN=${{ secrets.RECETTE_MAILER_DSN }}" >> .env.prod
             php bin/console cache:clear --env=prod
             php bin/console doctrine:migrations:migrate --env=prod
             php bin/console assets:install --env=prod
