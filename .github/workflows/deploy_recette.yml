@@ -3,7 +3,7 @@ name: Deploy Symfony to OVH
 on:
   push:
     branches:
-      - master
+      - recette # ou la branche que vous souhaitez déployer
 
 jobs:
   deploy:
@@ -35,7 +35,7 @@ jobs:
           username: ${{ secrets.OVH_FTP_USERNAME }}  # Nom d'utilisateur FTP
           password: ${{ secrets.OVH_FTP_PASSWORD }}  # Mot de passe FTP
           local-dir: ./  # Répertoire local à déployer
-          server-dir: /api/  # Répertoire distant sur votre serveur OVH
+          server-dir: /testapi/  # Répertoire distant sur votre serveur OVH
           dry-run: false  # Déploiement réel, pas en mode simulation
         
       - name: Add SSH host key to known_hosts
@@ -51,7 +51,7 @@ jobs:
             alias php='/usr/local/php8.2/bin/php'
             export PATH=/usr/local/php8.2/bin:$PATH
 
-            cd /home/eccemiz/api
+            cd /home/eccemiz/testapi
 
             # Télécharger Composer et l'installer localement
             curl -sS https://getcomposer.org/installer | php
@@ -72,15 +72,15 @@ jobs:
 
             # Écraser et réécrire le fichier .env.prod
             cat <<EOT > .env.prod
-              DATABASE_URL="${{ secrets.PROD_DATABASE_URL }}"
+              DATABASE_URL="${{ secrets.RECETTE_DATABASE_URL }}"
               JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
               JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
               JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
-              S3_KEY=${{ secrets.PROD_S3_KEY }}
-              S3_SECRET=${{ secrets.PROD_S3_SECRET }}
-              S3_REGION=${{ secrets.PROD_S3_REGION }}
-              S3_BUCKET=${{ secrets.PROD_S3_BUCKET }}
-              STRIPE_SECRET_KEY=${{ secrets.PROD_STRIPE_SECRET_KEY }}
-              STRIPE_WEBHOOK_SECRET=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}
-              MAILER_DSN="${{ secrets.PROD_MAILER_DSN }}"
+              S3_KEY=${{ secrets.RECETTE_S3_KEY }}
+              S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}
+              S3_REGION=${{ secrets.RECETTE_S3_REGION }}
+              S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}
+              STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}
+              STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}
+              MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
           EOF
