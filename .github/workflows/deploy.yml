@@ -57,18 +57,6 @@ jobs:
             curl -sS https://getcomposer.org/installer | php
 
             php composer.phar install
-
-            # Écraser et réécrire le fichier .env.prod
-            cat <<EOT > .env.prod
-              DATABASE_URL="mysql://${{ secrets.RECETTE_DATABASE_URL }}"
-              S3_KEY=${{ secrets.RECETTE_S3_KEY }}
-              S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}
-              S3_REGION=${{ secrets.RECETTE_S3_REGION }}
-              S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}
-              STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}
-              STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}
-              MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
-            EOT
             
             php bin/console cache:clear --env=prod
             
@@ -81,4 +69,16 @@ jobs:
             fi
 
             php bin/console assets:install --env=prod
+
+            # Écraser et réécrire le fichier .env.prod
+            cat <<EOT > .env.prod
+              DATABASE_URL="${{ secrets.RECETTE_DATABASE_URL }}"
+              S3_KEY=${{ secrets.RECETTE_S3_KEY }}
+              S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}
+              S3_REGION=${{ secrets.RECETTE_S3_REGION }}
+              S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}
+              STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}
+              STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}
+              MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
+            EOT
           EOF
