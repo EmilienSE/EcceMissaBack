@@ -69,6 +69,6 @@ jobs:
             sed -i "s#^MAILER_DSN=.*#MAILER_DSN=${{ secrets.RECETTE_MAILER_DSN }}#" .env.prod
             
             php bin/console cache:clear --env=prod
-            php bin/console doctrine:migrations:migrate --env=prod
+            php bin/console doctrine:migrations:migrate --env=prod --no-interaction
             php bin/console assets:install --env=prod
           EOF
