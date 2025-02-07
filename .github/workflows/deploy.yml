@@ -52,37 +52,23 @@ jobs:
       - name: Install PHP 8.2 and Composer on OVH server
         run: |
           sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
-            # Télécharger PHP 8.2 et installer localement
-            wget https://www.php.net/distributions/php-8.2.0.tar.bz2
-            tar -xjf php-8.2.0.tar.bz2
-            cd php-8.2.0
-            ./configure --prefix=$HOME/php --enable-mbstring --enable-xml --enable-bcmath
-            make -j$(nproc)
-            make install
 
-            # Ajouter PHP au PATH
-            export PATH=$HOME/php/bin:$PATH
+            alias php='/usr/local/php8.0/bin/php'
+
+            cd /home/eccemiz/testapi
 
             # Télécharger Composer et l'installer localement
             curl -sS https://getcomposer.org/installer | php
-            mv composer.phar $HOME/bin/composer
-            export PATH=$HOME/bin:$PATH
 
-            # Vérifier l'installation de PHP et Composer
-            php -v
-            composer --version 
+            cd 
+            php composer.phar install
           EOF
 
       # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
-      - name: Install Composer dependancies - Clear Symfony cache - Run migrations - Create .env.prod
+      - name: Clear Symfony cache - Run migrations - Create .env.prod
         run: |
           sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 << 'EOF'
-            cd testapi
-
-            php -v
-            composer --version
-
-            composer install --no-dev --optimize-autoloader
+            cd /home/eccemiz/testapi
 
             echo "DATABASE_URL=${{ secrets.RECETTE_DATABASE_URL }}" >> .env.prod
             echo "S3_KEY=${{ secrets.RECETTE_S3_KEY }}" >> .env.prod
