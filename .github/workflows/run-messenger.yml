@@ -1,0 +1,30 @@
+name: Run Messenger Every Minute
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'  # Exécuter toutes les minutes
+  workflow_dispatch:  # Permet d'exécuter manuellement la tâche si nécessaire
+
+jobs:
+  run-messenger:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          host: ${{ secrets.OVH_SSH_HOST }}
+          username: ${{ secrets.OVH_SSH_USER }}
+          password: ${{ secrets.OVH_SSH_PASSWORD }}
+        
+      - name: Add SSH host key to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.OVH_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Run messenger:consume
+        run: |
+          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 "cd /home/mon_utilisateur/www && /usr/local/php8.1/bin/php /home/mon_utilisateur/www/bin/console messenger:consume async --limit=10 --no-debug"
