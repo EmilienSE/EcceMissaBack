@@ -61,7 +61,7 @@ jobs:
             php bin/console cache:clear --env=prod
             
             # Vérifier s'il y a des migrations en attente
-            if php bin/console doctrine:migrations:status | grep -q "New Migrations"; then
+            if php bin/console doctrine:migrations:status | grep -q "New"; then
               echo "✅ Des migrations sont en attente. Exécution..."
               php bin/console doctrine:migrations:migrate --env=prod --no-interaction
             else
