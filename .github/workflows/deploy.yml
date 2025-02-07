@@ -65,8 +65,8 @@ jobs:
             sed -i "s#^S3_REGION=.*#S3_REGION=${{ secrets.RECETTE_S3_REGION }}#" .env.prod
             sed -i "s#^S3_BUCKET=.*#S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}#" .env.prod
             sed -i "s#^STRIPE_SECRET_KEY=.*#STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}#" .env.prod
-            sed -i "s#^STRIPE_WEBHOOK_SECRET=.*#STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}\"#" .env.prod
-            sed -i "s#^MAILER_DSN=.*#MAILER_DSN=\"${{ secrets.RECETTE_MAILER_DSN }}#" .env.prod
+            sed -i "s#^STRIPE_WEBHOOK_SECRET=.*#STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}#" .env.prod
+            sed -i "s#^MAILER_DSN=.*#MAILER_DSN=\"${{ secrets.RECETTE_MAILER_DSN }}\"#" .env.prod
             
             php bin/console cache:clear --env=prod
             
