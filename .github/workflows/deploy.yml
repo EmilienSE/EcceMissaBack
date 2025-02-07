@@ -69,6 +69,14 @@ jobs:
             sed -i "s#^MAILER_DSN=.*#MAILER_DSN=${{ secrets.RECETTE_MAILER_DSN }}#" .env.prod
             
             php bin/console cache:clear --env=prod
-            php bin/console doctrine:migrations:migrate --env=prod --no-interaction
+            
+            # Vérifier s'il y a des migrations en attente
+            if php bin/console doctrine:migrations:status | grep -q "New Migrations"; then
+                echo "✅ Des migrations sont en attente. Exécution..."
+                php bin/console doctrine:migrations:migrate --env=prod --no-interaction
+            else
+                echo "🔹 Aucune migration en attente. Skip."
+            fi
+
             php bin/console assets:install --env=prod
           EOF
