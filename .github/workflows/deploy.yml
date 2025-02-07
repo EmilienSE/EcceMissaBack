@@ -59,7 +59,7 @@ jobs:
             php composer.phar install
 
             # Mettre à jour les informations de .env.prod
-            sed -i "s#^DATABASE_URL=.*#DATABASE_URL=\"mysql://${{ secrets.RECETTE_DATABASE_USER }}:${{ secrets.RECETTE_DATABASE_PASSWORD }}@${{ secrets.RECETTE_DATABASE_HOST }}:${{ secrets.RECETTE_DATABASE_PORT }}/${{ secrets.RECETTE_DATABASE_NAME }}?serverVersion=8.0.32&charset=utf8mb4\"#" .env.prod
+            sed -i "s#^DATABASE_URL=.*#DATABASE_URL=\"mysql://${{ secrets.RECETTE_DATABASE_USER:-default_user }}:${{ secrets.RECETTE_DATABASE_PASSWORD:-default_password }}@${{ secrets.RECETTE_DATABASE_HOST:-default_host }}:${{ secrets.RECETTE_DATABASE_PORT:-3306 }}/${{ secrets.RECETTE_DATABASE_NAME:-default_db }}?serverVersion=8.0.32&charset=utf8mb4\"#" .env.prod
             sed -i "s#^S3_KEY=.*#S3_KEY=${{ secrets.RECETTE_S3_KEY }}#" .env.prod
             sed -i "s#^S3_SECRET=.*#S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}#" .env.prod
             sed -i "s#^S3_REGION=.*#S3_REGION=${{ secrets.RECETTE_S3_REGION }}#" .env.prod
