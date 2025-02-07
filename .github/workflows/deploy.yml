@@ -43,32 +43,18 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.OVH_SSH_HOST }} >> ~/.ssh/known_hosts
 
-
-      # Installer sshpass
-      - name: Install sshpass
-        run: sudo apt-get install sshpass
-
-      # Installer PHP 8.2 et Composer sur le serveur OVH à chaque déploiement
-      - name: Install PHP 8.2 and Composer on OVH server
+      # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
+      - name: Install Composer - Clear Symfony cache - Run migrations - Create .env.prod
         run: |
-          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no ${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }} << 'EOF'
-
-            alias php='/usr/local/php8.0/bin/php'
+          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 << 'EOF'
+            alias php='/usr/local/php8.2/bin/php'
 
             cd /home/eccemiz/testapi
 
             # Télécharger Composer et l'installer localement
             curl -sS https://getcomposer.org/installer | php
 
-            cd 
             php composer.phar install
-          EOF
-
-      # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
-      - name: Clear Symfony cache - Run migrations - Create .env.prod
-        run: |
-          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 << 'EOF'
-            cd /home/eccemiz/testapi
 
             echo "DATABASE_URL=${{ secrets.RECETTE_DATABASE_URL }}" >> .env.prod
             echo "S3_KEY=${{ secrets.RECETTE_S3_KEY }}" >> .env.prod
