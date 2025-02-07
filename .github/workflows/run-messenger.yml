@@ -23,4 +23,4 @@ jobs:
 
       - name: Run messenger:consume
         run: |
-          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 "cd /home/eccemiz/testapi && /usr/local/php8.1/bin/php /home/eccemiz/testapi/bin/console messenger:consume async --limit=10 --no-debug"
+          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 "cd /home/eccemiz/testapi && /usr/local/php8.2/bin/php /home/eccemiz/testapi/bin/console messenger:consume async --limit=10 --no-debug"
