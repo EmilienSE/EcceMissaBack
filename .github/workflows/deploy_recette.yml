@@ -82,5 +82,8 @@ jobs:
               S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}
               STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}
               STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}
+              STRIPE_YEARLY_PRICE=${{ secrets.RECETTE_STRIPE_YEARLY_PRICE }}
+              STRIPE_MONTHLY_PRICE=${{ secrets.RECETTE_STRIPE_MONTHLY_PRICE }}
+              STRIPE_QUARTERLY_PRICE=${{ secrets.RECETTE_STRIPE_QUARTERLY_PRICE }}
               MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
           EOF

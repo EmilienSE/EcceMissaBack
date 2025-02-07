@@ -138,10 +138,29 @@ class ParoisseController extends AbstractController
     public function createPaymentIntent(Request $request): JsonResponse
     {
         $paroisseId = $request->request->get('paroisse_id') ?? null;
+        $price = $request->request->get('price') ?? null;
         $paroisse = $this->paroisseRepository->find($paroisseId);
 
         if (!$paroisse) {
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+        if (!$price || !in_array($price, ['monthly', 'quarterly', 'yearly'])) {
+            return new JsonResponse(['error' => 'Tarif incorrect ou manquant'], 400);
+        }
+
+        $price_id = null;
+        switch ($price) {
+            case 'monthly':
+                $price_id = $_ENV['STRIPE_MONTHLY_PRICE'];
+                break;
+            case 'quarterly':
+                $price_id = $_ENV['STRIPE_QUARTERLY_PRICE'];
+                break;
+            case 'yearly':
+                $price_id = $_ENV['STRIPE_YEARLY_PRICE'];
+                break;
+            default:
+                return new JsonResponse(['error' => 'Tarif incorrect'], 400);
         }
 
         // Configure Stripe API key
@@ -165,7 +184,7 @@ class ParoisseController extends AbstractController
                 'mode' => 'subscription',
                 'payment_method_types' => ['card', 'sepa_debit'],
                 'line_items' => [[
-                    'price' => 'price_1QRavwE8TPrVnm48HByt8DnE',
+                    'price' => $price_id,
                     'quantity' => 1,
                 ]],
                 'subscription_data' => [
