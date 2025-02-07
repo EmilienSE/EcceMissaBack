@@ -57,7 +57,7 @@ jobs:
             curl -sS https://getcomposer.org/installer | php
 
             php composer.phar install
-            
+
             php bin/console cache:clear --env=prod
             
             # Vérifier s'il y a des migrations en attente
@@ -73,6 +73,9 @@ jobs:
             # Écraser et réécrire le fichier .env.prod
             cat <<EOT > .env.prod
               DATABASE_URL="${{ secrets.RECETTE_DATABASE_URL }}"
+              JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+              JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+              JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
               S3_KEY=${{ secrets.RECETTE_S3_KEY }}
               S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}
               S3_REGION=${{ secrets.RECETTE_S3_REGION }}
@@ -80,5 +83,4 @@ jobs:
               STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}
               STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}
               MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
-            EOT
           EOF
