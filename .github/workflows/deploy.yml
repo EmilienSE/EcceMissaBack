@@ -60,24 +60,24 @@ jobs:
 
             # Écraser et réécrire le fichier .env.prod
             cat <<EOT > .env.prod
-            DATABASE_URL="mysql://${{ secrets.RECETTE_DATABASE_USER }}:${{ secrets.RECETTE_DATABASE_PASSWORD }}@${{ secrets.RECETTE_DATABASE_HOST }}:3306/${{ secrets.RECETTE_DATABASE_NAME }}?serverVersion=8.0.32&charset=utf8mb4"
-            S3_KEY=${{ secrets.RECETTE_S3_KEY }}
-            S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}
-            S3_REGION=${{ secrets.RECETTE_S3_REGION }}
-            S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}
-            STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}
-            STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}
-            MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
+              DATABASE_URL="mysql://${{ secrets.RECETTE_DATABASE_URL }}"
+              S3_KEY=${{ secrets.RECETTE_S3_KEY }}
+              S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}
+              S3_REGION=${{ secrets.RECETTE_S3_REGION }}
+              S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}
+              STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}
+              STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}
+              MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
             EOT
             
             php bin/console cache:clear --env=prod
             
             # Vérifier s'il y a des migrations en attente
             if php bin/console doctrine:migrations:status | grep -q "New Migrations"; then
-                echo "✅ Des migrations sont en attente. Exécution..."
-                php bin/console doctrine:migrations:migrate --env=prod --no-interaction
+              echo "✅ Des migrations sont en attente. Exécution..."
+              php bin/console doctrine:migrations:migrate --env=prod --no-interaction
             else
-                echo "🔹 Aucune migration en attente. Skip."
+              echo "🔹 Aucune migration en attente. Skip."
             fi
 
             php bin/console assets:install --env=prod
