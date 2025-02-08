@@ -33,7 +33,9 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private ?string $password = null;
 
-    
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $resetToken = null;
+
     #[ORM\Column(length: 255)]
     private ?string $Nom = null;
 
@@ -137,7 +139,18 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    
+    public function getResetToken(): ?string
+    {
+        return $this->resetToken;
+    }
+
+    public function setResetToken(?string $resetToken): static
+    {
+        $this->resetToken = $resetToken;
+
+        return $this;
+    }
+
     public function getNom(): ?string
     {
         return $this->Nom;
