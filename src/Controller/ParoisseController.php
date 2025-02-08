@@ -57,6 +57,12 @@ class ParoisseController extends AbstractController
     #[Route('/api/paroisse', name: 'add_paroisse', methods: ['POST'])]
     public function addParoisse(Request $request, UserInterface $user): JsonResponse
     {
+        // Vérifier si acceptCgvCgu est envoyé à true
+        $acceptCgvCgu = $request->request->get('acceptCgvCgu') ?? null;
+        if ($acceptCgvCgu !== 'true') {
+            return new JsonResponse(['error' => 'Les CGV et CGU doivent être acceptées.'], 400);
+        }
+
         // Vérifier si l'utilisateur est déjà responsable d'une paroisse
         $existingParoisse = $this->entityManager->getRepository(Utilisateur::class)->findOneBy(['id' => $user->getId()])->getParoisse();
 
@@ -84,6 +90,8 @@ class ParoisseController extends AbstractController
         $paroisse->setDiocese($diocese);
         $paroisse->addResponsable($user);
         $paroisse->setPaiementAJour(false);
+        $paroisse->setCguAccepted(true);
+        $paroisse->setCgvAccepted(true);
 
         // Générer un code unique aléatoire
         $codeUnique = strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));

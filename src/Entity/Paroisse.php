@@ -54,6 +54,12 @@ class Paroisse
     #[ORM\Column(length: 10, nullable:true)]
     private ?string $codeUnique = null;
 
+    #[ORM\Column(type: 'boolean')]
+    private bool $cgvAccepted = false;
+
+    #[ORM\Column(type: 'boolean')]
+    private bool $cguAccepted = false;
+
     public function __construct()
     {
         $this->eglises = new ArrayCollection();
@@ -236,6 +242,30 @@ class Paroisse
     public function setCodeUnique(?string $codeUnique): self
     {
         $this->codeUnique = $codeUnique;
+
+        return $this;
+    }
+
+    public function isCgvAccepted(): bool
+    {
+        return $this->cgvAccepted;
+    }
+
+    public function setCgvAccepted(bool $cgvAccepted): self
+    {
+        $this->cgvAccepted = $cgvAccepted;
+
+        return $this;
+    }
+
+    public function isCguAccepted(): bool
+    {
+        return $this->cguAccepted;
+    }
+
+    public function setCguAccepted(bool $cguAccepted): self
+    {
+        $this->cguAccepted = $cguAccepted;
 
         return $this;
     }
