@@ -45,6 +45,9 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private ?bool $Enabled = null;
 
+    #[ORM\Column]
+    private ?bool $termsAccepted = null;
+
     /**
      * @var Collection<int, Feuillet>
      */
@@ -192,6 +195,18 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     public function setEnabled(bool $Enabled): static
     {
         $this->Enabled = $Enabled;
+
+        return $this;
+    }
+
+    public function hasAcceptedTerms(): ?bool
+    {
+        return $this->termsAccepted;
+    }
+
+    public function acceptTerms(bool $termsAccepted): static
+    {
+        $this->termsAccepted = $termsAccepted;
 
         return $this;
     }
