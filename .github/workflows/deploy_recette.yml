@@ -86,4 +86,5 @@ jobs:
               STRIPE_MONTHLY_PRICE=${{ secrets.RECETTE_STRIPE_MONTHLY_PRICE }}
               STRIPE_QUARTERLY_PRICE=${{ secrets.RECETTE_STRIPE_QUARTERLY_PRICE }}
               MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
+              FRONTEND_URL="${{ secrets.RECETTE_FRONTEND_URL }}"
           EOF
