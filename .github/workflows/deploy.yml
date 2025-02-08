@@ -82,5 +82,9 @@ jobs:
               S3_BUCKET=${{ secrets.PROD_S3_BUCKET }}
               STRIPE_SECRET_KEY=${{ secrets.PROD_STRIPE_SECRET_KEY }}
               STRIPE_WEBHOOK_SECRET=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}
+              STRIPE_YEARLY_PRICE=${{ secrets.PROD_STRIPE_YEARLY_PRICE }}
+              STRIPE_MONTHLY_PRICE=${{ secrets.PROD_STRIPE_MONTHLY_PRICE }}
+              STRIPE_QUARTERLY_PRICE=${{ secrets.PROD_STRIPE_QUARTERLY_PRICE }}
               MAILER_DSN="${{ secrets.PROD_MAILER_DSN }}"
+              FRONTEND_URL="${{ secrets.PROD_FRONTEND_URL }}"
           EOF

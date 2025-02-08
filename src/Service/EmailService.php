@@ -175,6 +175,19 @@ class EmailService
         $this->send($subject, $htmlContent, $this->to, $email);
     }
 
+    public function sendPasswordResetEmail(string $to, string $token): void
+    {
+        $subject = 'Réinitialisation de votre mot de passe';
+
+        $htmlContent = $this->twig->render('emails/password_reset.html.twig', [
+            'subject' => $subject,
+            'frontend_url' => $_ENV['FRONTEND_URL'],
+            'token' => $token,
+        ]);
+
+        $this->send($subject, $htmlContent, $to);
+    }
+
     private function send(string $subject, string $htmlContent, string $to, ?string $replyTo = null): void
     {
         $email = (new Email())

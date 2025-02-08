@@ -33,6 +33,11 @@ class UtilisateurController extends AbstractController
         $prenom = $request->request->get('prenom') ?? null;
         $nom = $request->request->get('nom') ?? null;
         $password = $request->request->get('password') ?? null;
+        $termsAccepted = $request->request->get('termsAccepted') ?? null;
+
+        if (empty($termsAccepted) || $termsAccepted !== 'true') {
+            return $this->json(['error' => 'Les termes doivent être acceptés.'], JsonResponse::HTTP_BAD_REQUEST);
+        }
 
         // Vérification des données
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -57,6 +62,7 @@ class UtilisateurController extends AbstractController
         $utilisateur->setNom($nom);
         $utilisateur->setPrenom($prenom);
         $utilisateur->setEnabled(true);
+        $utilisateur->acceptTerms(true);
 
         // Hacher le mot de passe
         $hashedPassword = $passwordHasher->hashPassword($utilisateur, $password);
