@@ -1,6 +1,6 @@
 nelmio_cors:
     defaults:
-        allow_origin: ['http://localhost:4200', 'https://eccemissa.fr/', 'https://app.eccemissa.fr', 'https://test.app.eccemissa.fr']
+        allow_origin: ['http://localhost:4200', 'https://eccemissa.fr/', 'https://app.eccemissa.fr', 'https://test.app.eccemissa.fr', 'https://api.eccemissa.fr']
         allow_credentials: true
         allow_headers: ['Content-Type', 'Authorization', 'X-Requested-With']
         expose_headers: ['Authorization']
