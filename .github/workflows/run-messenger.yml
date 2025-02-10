@@ -1,0 +1,23 @@
+name: Run Messenger Every Minute
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-messenger:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Add SSH host key to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.OVH_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Run messenger:consume
+        run: |
+          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 "cd /home/eccemiz/testapi && /usr/local/php8.2/bin/php /home/eccemiz/testapi/bin/console messenger:consume async --limit=10 --no-debug"

@@ -57,6 +57,12 @@ class ParoisseController extends AbstractController
     #[Route('/api/paroisse', name: 'add_paroisse', methods: ['POST'])]
     public function addParoisse(Request $request, UserInterface $user): JsonResponse
     {
+        // Vérifier si acceptCgvCgu est envoyé à true
+        $acceptCgvCgu = $request->request->get('acceptCgvCgu') ?? null;
+        if ($acceptCgvCgu !== 'true') {
+            return new JsonResponse(['error' => 'Les CGV et CGU doivent être acceptées.'], 400);
+        }
+
         // Vérifier si l'utilisateur est déjà responsable d'une paroisse
         $existingParoisse = $this->entityManager->getRepository(Utilisateur::class)->findOneBy(['id' => $user->getId()])->getParoisse();
 
@@ -84,6 +90,8 @@ class ParoisseController extends AbstractController
         $paroisse->setDiocese($diocese);
         $paroisse->addResponsable($user);
         $paroisse->setPaiementAJour(false);
+        $paroisse->setCguAccepted(true);
+        $paroisse->setCgvAccepted(true);
 
         // Générer un code unique aléatoire
         $codeUnique = strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
@@ -138,10 +146,29 @@ class ParoisseController extends AbstractController
     public function createPaymentIntent(Request $request): JsonResponse
     {
         $paroisseId = $request->request->get('paroisse_id') ?? null;
+        $price = $request->request->get('price') ?? null;
         $paroisse = $this->paroisseRepository->find($paroisseId);
 
         if (!$paroisse) {
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+        if (!$price || !in_array($price, ['monthly', 'quarterly', 'yearly'])) {
+            return new JsonResponse(['error' => 'Tarif incorrect ou manquant'], 400);
+        }
+
+        $price_id = null;
+        switch ($price) {
+            case 'monthly':
+                $price_id = $_ENV['STRIPE_MONTHLY_PRICE'];
+                break;
+            case 'quarterly':
+                $price_id = $_ENV['STRIPE_QUARTERLY_PRICE'];
+                break;
+            case 'yearly':
+                $price_id = $_ENV['STRIPE_YEARLY_PRICE'];
+                break;
+            default:
+                return new JsonResponse(['error' => 'Tarif incorrect'], 400);
         }
 
         // Configure Stripe API key
@@ -165,7 +192,7 @@ class ParoisseController extends AbstractController
                 'mode' => 'subscription',
                 'payment_method_types' => ['card', 'sepa_debit'],
                 'line_items' => [[
-                    'price' => 'price_1QRavwE8TPrVnm48HByt8DnE',
+                    'price' => $price_id,
                     'quantity' => 1,
                 ]],
                 'subscription_data' => [
@@ -442,7 +469,7 @@ class ParoisseController extends AbstractController
         );
 
         // Génération du PDF
-        $pdf = new \TCPDF();
+        $pdf = new \TCPDF('P', 'mm', 'A5');
         $oswald = \TCPDF_FONTS::addTTFfont('Oswald.ttf', 'TrueTypeUnicode', '', 96);
         $oswaldB = \TCPDF_FONTS::addTTFfont('Oswald-Bold.ttf', 'TrueTypeUnicode', '', 96);
         $roboto = \TCPDF_FONTS::addTTFfont('Roboto-Bold.ttf', 'TrueTypeUnicode', '', 96);
@@ -457,15 +484,15 @@ class ParoisseController extends AbstractController
 
         // Contenu du PDF
         $logo = 'logo.png'; // Remplacez par le chemin de votre logo
-        $pdf->Image($logo, 95, 10, 20, 20, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+        $pdf->Image($logo, 65, 10, 15, 15, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
 
         // Ajouter le titre principal
-        $pdf->SetFont($oswald, '', 20);
+        $pdf->SetFont($oswald, '', 15);
         $pdf->SetTextColor(38, 65, 66);
         $pdf->Ln(20); // Saut de ligne
         $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
-        $pdf->Ln(15);
-        $pdf->SetFont($oswaldB, 'B', 45);
+        $pdf->Ln(10);
+        $pdf->SetFont($oswaldB, 'B', 25);
         $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
         $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
 
@@ -477,16 +504,16 @@ class ParoisseController extends AbstractController
             'fgcolor' => [38, 65, 66],
             'bgcolor' => [255, 255, 255],
         ];
-        $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 72.5, 105, 70, 70, $style, 'N');
+        $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 40, 80, 70, 70, $style, 'N');
 
         // Ajouter le texte explicatif
-        $pdf->Ln(20);
-        $pdf->SetFont($roboto, '', 30);
+        $pdf->Ln(10);
+        $pdf->SetFont($roboto, '', 20);
         $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
 
         // Ajouter le pied de page
         $pdf->SetFont($oswald, '', 10);
-        $pdf->SetY(-30);
+        $pdf->SetY(-20);
         $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
         $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
 

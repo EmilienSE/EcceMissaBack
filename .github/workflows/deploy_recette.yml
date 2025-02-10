@@ -1,0 +1,90 @@
+name: Deploy Symfony to OVH
+
+on:
+  push:
+    branches:
+      - recette
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Vérifier le code source depuis GitHub
+      - name: Checkout code PHp
+        uses: actions/checkout@v2
+
+      # Installer PHP
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'  # Remplacez par la version PHP que vous utilisez
+          extensions: mbstring, xml, bcmath
+
+      
+      # Installer Composer
+      - name: Install Composer
+        run: |
+          curl -sS https://getcomposer.org/installer | php
+          sudo mv composer.phar /usr/local/bin/composer
+
+      # Déployer via FTP
+      - name: Deploy to OVH via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.0.0
+        with:
+          server: ${{ secrets.OVH_FTP_HOST }}  # Hôte FTP
+          username: ${{ secrets.OVH_FTP_USERNAME }}  # Nom d'utilisateur FTP
+          password: ${{ secrets.OVH_FTP_PASSWORD }}  # Mot de passe FTP
+          local-dir: ./  # Répertoire local à déployer
+          server-dir: /testapi/  # Répertoire distant sur votre serveur OVH
+          dry-run: false  # Déploiement réel, pas en mode simulation
+        
+      - name: Add SSH host key to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.OVH_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      # Autres actions si nécessaires (exécuter les commandes Symfony pour la prod, par exemple)
+      - name: Install Composer - Clear Symfony cache - Run migrations - Create .env.prod
+        run: |
+          sshpass -p "${{ secrets.OVH_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no -v -T ssh://${{ secrets.OVH_SSH_USER }}@${{ secrets.OVH_SSH_HOST }}:22 << 'EOF'
+            
+            alias php='/usr/local/php8.2/bin/php'
+            export PATH=/usr/local/php8.2/bin:$PATH
+
+            cd /home/eccemiz/testapi
+
+            # Télécharger Composer et l'installer localement
+            curl -sS https://getcomposer.org/installer | php
+
+            php composer.phar install
+
+            php bin/console cache:clear --env=prod
+            
+            # Vérifier s'il y a des migrations en attente
+            if php bin/console doctrine:migrations:status | grep -q "New"; then
+              echo "✅ Des migrations sont en attente. Exécution..."
+              php bin/console doctrine:migrations:migrate --env=prod --no-interaction
+            else
+              echo "🔹 Aucune migration en attente. Skip."
+            fi
+
+            php bin/console assets:install --env=prod
+
+            # Écraser et réécrire le fichier .env.prod
+            cat <<EOT > .env.prod
+              DATABASE_URL="${{ secrets.RECETTE_DATABASE_URL }}"
+              JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+              JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+              JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }}
+              S3_KEY=${{ secrets.RECETTE_S3_KEY }}
+              S3_SECRET=${{ secrets.RECETTE_S3_SECRET }}
+              S3_REGION=${{ secrets.RECETTE_S3_REGION }}
+              S3_BUCKET=${{ secrets.RECETTE_S3_BUCKET }}
+              STRIPE_SECRET_KEY=${{ secrets.RECETTE_STRIPE_SECRET_KEY }}
+              STRIPE_WEBHOOK_SECRET=${{ secrets.RECETTE_STRIPE_WEBHOOK_SECRET }}
+              STRIPE_YEARLY_PRICE=${{ secrets.RECETTE_STRIPE_YEARLY_PRICE }}
+              STRIPE_MONTHLY_PRICE=${{ secrets.RECETTE_STRIPE_MONTHLY_PRICE }}
+              STRIPE_QUARTERLY_PRICE=${{ secrets.RECETTE_STRIPE_QUARTERLY_PRICE }}
+              MAILER_DSN="${{ secrets.RECETTE_MAILER_DSN }}"
+              FRONTEND_URL="${{ secrets.RECETTE_FRONTEND_URL }}"
+          EOF

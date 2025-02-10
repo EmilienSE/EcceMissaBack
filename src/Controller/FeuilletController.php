@@ -16,6 +16,8 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use GuzzleHttp\Client;
+use Symfony\Component\Messenger\MessageBusInterface;
+use App\Message\IncrementFeuilletViewMessage;
 
 class FeuilletController extends AbstractController
 {
@@ -383,7 +385,7 @@ class FeuilletController extends AbstractController
     }
 
     #[Route('/feuillet/paroisse/{paroisseId}/nearest/pdf', name: 'show_nearest_feuillet_pdf_by_paroisse', methods: ['GET'])]
-    public function showNearestFeuilletPdfByParoisse(int $paroisseId): Response
+    public function showNearestFeuilletPdfByParoisse(int $paroisseId, MessageBusInterface $messageBus): Response
     {
         $currentDate = new \DateTime();
 
@@ -422,10 +424,8 @@ class FeuilletController extends AbstractController
         // Récupérer l'URL du fichier PDF
         $fileUrl = $nearestFeuillet->getFileUrl();
 
-        // Incrémenter le compteur de vues
-        $nearestFeuillet->incrementViewCount();
-        $this->entityManager->persist($nearestFeuillet);
-        $this->entityManager->flush();
+        // Envoyer la tâche d'incrémentation à Messenger
+        $messageBus->dispatch(new IncrementFeuilletViewMessage($nearestFeuillet->getId()));
 
         // Télécharger le fichier PDF depuis l'URL
         $client = new Client(['verify' => false]);
