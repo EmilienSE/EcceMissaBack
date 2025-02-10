@@ -3,7 +3,7 @@ name: Deploy Symfony to OVH
 on:
   push:
     branches:
-      - recette # ou la branche que vous souhaitez déployer
+      - recette
 
 jobs:
   deploy:

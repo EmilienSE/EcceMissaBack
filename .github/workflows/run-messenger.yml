@@ -1,12 +1,9 @@
 name: Run Messenger Every Minute
 
 on:
-  push:
-      branches:
-        - recette
   schedule:
-    - cron: '*/1 * * * *'  # Exécuter toutes les minutes
-  workflow_dispatch:  # Permet d'exécuter manuellement la tâche si nécessaire
+    - cron: '*/1 * * * *'
+  workflow_dispatch:
 
 jobs:
   run-messenger:
