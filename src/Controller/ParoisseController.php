@@ -20,6 +20,7 @@ use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\BillingPortal\Session as BillingSession;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use App\Entity\FeuilletView;
 
 class ParoisseController extends AbstractController
 {
@@ -325,6 +326,86 @@ class ParoisseController extends AbstractController
         }
     }
 
+    #[Route('/api/paroisse/retry_payment', name: 'retry_payment', methods: ['POST'])]
+    public function retryPayment(Request $request): JsonResponse
+    {
+        $paroisseId = $request->request->get('paroisse_id') ?? null;
+        $price = $request->request->get('price') ?? null;
+        $paroisse = $this->paroisseRepository->find($paroisseId);
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+        if (!$price || !in_array($price, ['monthly', 'quarterly', 'yearly'])) {
+            return new JsonResponse(['error' => 'Tarif incorrect ou manquant'], 400);
+        }
+
+        $price_id = null;
+        switch ($price) {
+            case 'monthly':
+                $price_id = $_ENV['STRIPE_MONTHLY_PRICE'];
+                break;
+            case 'quarterly':
+                $price_id = $_ENV['STRIPE_QUARTERLY_PRICE'];
+                break;
+            case 'yearly':
+                $price_id = $_ENV['STRIPE_YEARLY_PRICE'];
+                break;
+            default:
+                return new JsonResponse(['error' => 'Tarif incorrect'], 400);
+        }
+
+        // Configure Stripe API key
+        Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
+
+        try {
+            // Création d'un client Stripe uniquement si la paroisse n'en a pas déjà un
+            if (is_null($paroisse->getStripeCustomerId())) {
+                $customer = Customer::create([
+                    'description' => $paroisse->getNom().' - '.$paroisse->getDiocese()->getNom()
+                ]);
+                $paroisse->setStripeCustomerId($customer->id);
+                $this->entityManager->persist($paroisse);
+                $this->entityManager->flush();
+            } else {
+                $customer = Customer::retrieve($paroisse->getStripeCustomerId());
+            }
+
+            $session = Session::create([
+                'success_url' => 'https://app.eccemissa.fr/paroisse', // /success?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => 'https://app.eccemissa.fr/paroisse/fail',
+                'customer' => $customer->id,
+                'mode' => 'subscription',
+                'payment_method_types' => ['card', 'sepa_debit'],
+                'line_items' => [[
+                    'price' => $price_id,
+                    'quantity' => 1,
+                ]],
+                'subscription_data' => [
+                    'trial_period_days' => 14
+                ],
+                'metadata' => [
+                    'paroisse_id' => $paroisse->getId(), // ID de la paroisse ajouté ici
+                ],
+                'subscription_data'=> [
+                    'metadata' => [
+                        'paroisse_id' => $paroisse->getId()
+                    ]
+                ],
+                "allow_promotion_codes" => true
+            ]);
+            
+            // Répondre avec l'ID de la session pour le frontend
+            return new JsonResponse([
+                'paymentLink' => $session->url,
+            ], 201);
+
+        } catch (\Exception $e) {
+            // Gérer les erreurs et retourner une réponse adéquate
+            return new JsonResponse(['error' => $e->getMessage()], 500);
+        }
+    }
+
     #[Route('/api/paroisse/{id}', name: 'update_paroisse', methods: ['POST'])]
     public function updateParoisse(Request $request, int $id, UserInterface $user): JsonResponse
     {
@@ -367,52 +448,6 @@ class ParoisseController extends AbstractController
         $this->entityManager->flush();
 
         return new JsonResponse(['message' => 'Paroisse mise à jour']);
-    }
-
-    #[Route('/api/paroisse/{id}/retry_payment', name: 'retry_payment', methods: ['POST'])]
-    public function retryPayment(int $id): JsonResponse
-    {
-        $paroisse = $this->paroisseRepository->find($id);
-
-        if (!$paroisse) {
-            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
-        }
-
-        if ($paroisse->isPaiementAJour()) {
-            return new JsonResponse(['message' => 'Le paiement est déjà à jour'], 400);
-        }
-
-        // Configurer la clé API Stripe
-        Stripe::setApiKey($_ENV['STRIPE_SECRET_KEY']);
-
-        try {
-            // Création d'une nouvelle session de paiement pour régulariser
-            $session = Session::create([
-                'success_url' => 'https://app.eccemissa.fr/paroisse',  // Rediriger vers une page de succès
-                'cancel_url' => 'https://app.eccemissa.fr/paroisse',     // Rediriger en cas d'échec
-                'mode' => 'subscription',
-                'payment_method_types' => ['card', 'sepa_debit'],
-                'line_items' => [[
-                    'price' => 'price_1QRavwE8TPrVnm48HByt8DnE',
-                    'quantity' => 1,
-                ]],
-                'subscription_data' => [
-                    'metadata' => [
-                        'paroisse_id' => $paroisse->getId(),
-                    ]
-                ],
-                "allow_promotion_codes" => true
-            ]);
-
-            // Retourner le lien de paiement pour permettre au frontend de rediriger l'utilisateur
-            return new JsonResponse([
-                'paymentLink' => $session->url,
-            ], 201);
-
-        } catch (\Exception $e) {
-            // Gérer les erreurs Stripe
-            return new JsonResponse(['error' => $e->getMessage()], 500);
-        }
     }
 
     #[Route('/api/paroisse/{id}/billing_portal', name: 'billing_portal', methods: ['GET'])]
@@ -546,6 +581,46 @@ class ParoisseController extends AbstractController
         }
 
         return null; // Pas d'abonnement à annuler
+    }
+
+    #[Route('/api/paroisse/{id}/feuilletviews', name: 'get_paroisse_feuilletviews', methods: ['GET'])]
+    public function getParoisseFeuilletViews(Request $request, int $id): JsonResponse
+    {
+        $paroisse = $this->paroisseRepository->find($id);
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $startDate = $request->query->get('start_date');
+        $endDate = $request->query->get('end_date');
+
+        $queryBuilder = $this->entityManager->getRepository(FeuilletView::class)->createQueryBuilder('fv')
+            ->where('fv.paroisse = :paroisse')
+            ->setParameter('paroisse', $paroisse);
+
+        if ($startDate) {
+            $queryBuilder->andWhere('fv.viewedAt >= :startDate')
+                ->setParameter('startDate', new \DateTimeImmutable($startDate));
+        }
+
+        if ($endDate) {
+            $queryBuilder->andWhere('fv.viewedAt <= :endDate')
+                ->setParameter('endDate', new \DateTimeImmutable($endDate));
+        }
+
+        $feuilletViews = $queryBuilder->getQuery()->getResult();
+
+        $data = [];
+        foreach ($feuilletViews as $view) {
+            $data[] = [
+                'feuillet_id' => $view->getFeuillet()->getId(),
+                'paroisse_id' => $view->getParoisse()->getId(),
+                'viewed_at' => $view->getViewedAt()->format('Y-m-d H:i')
+            ];
+        }
+
+        return new JsonResponse($data);
     }
 
 }

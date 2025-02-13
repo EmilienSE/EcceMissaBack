@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\FeuilletRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -35,6 +37,17 @@ class Feuillet
 
     #[ORM\Column(type: Types::INTEGER)]
     private ?int $viewCount = 0;
+
+    /**
+     * @var Collection<int, FeuilletView>
+     */
+    #[ORM\OneToMany(targetEntity: FeuilletView::class, mappedBy: 'feuillet', orphanRemoval: true)]
+    private Collection $feuilletViews;
+
+    public function __construct()
+    {
+        $this->feuilletViews = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -115,12 +128,42 @@ class Feuillet
 
     public function getViewCount(): int
     {
-        return $this->viewCount;
+        return $this->viewCount + $this->feuilletViews->count();
     }
 
     public function incrementViewCount(): self
     {
         $this->viewCount++;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, FeuilletView>
+     */
+    public function getFeuilletViews(): Collection
+    {
+        return $this->feuilletViews;
+    }
+
+    public function addFeuilletView(FeuilletView $feuilletView): static
+    {
+        if (!$this->feuilletViews->contains($feuilletView)) {
+            $this->feuilletViews->add($feuilletView);
+            $feuilletView->setFeuillet($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFeuilletView(FeuilletView $feuilletView): static
+    {
+        if ($this->feuilletViews->removeElement($feuilletView)) {
+            // set the owning side to null (unless already changed)
+            if ($feuilletView->getFeuillet() === $this) {
+                $feuilletView->setFeuillet(null);
+            }
+        }
+
         return $this;
     }
 }
