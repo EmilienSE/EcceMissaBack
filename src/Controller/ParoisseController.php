@@ -600,7 +600,7 @@ class ParoisseController extends AbstractController
             ->setParameter('paroisse', $paroisse);
 
         if ($startDate) {
-            $queryBuilder->andWhere('fv.viewedAt >= :startDate')
+            $queryBuilder->andWhere('fv.viewedAt >= :startDate') 
                 ->setParameter('startDate', new \DateTimeImmutable($startDate));
         }
 

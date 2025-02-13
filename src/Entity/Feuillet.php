@@ -25,7 +25,7 @@ class Feuillet
     #[ORM\ManyToOne(inversedBy: 'feuillets')]
     private ?Eglise $Eglise = null;
 
-    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $celebrationDate = null;
 
     #[ORM\ManyToOne(inversedBy: 'feuillets')]

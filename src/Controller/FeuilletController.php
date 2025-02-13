@@ -67,7 +67,7 @@ class FeuilletController extends AbstractController
             $data[] = [
                 'id' => $feuillet->getId(),
                 'description' => $feuillet->getDescription(),
-                'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
+                'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d H:i'),
                 'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getNom() : null,
                 'fileUrl' => $feuillet->getFileUrl(),
@@ -100,7 +100,7 @@ class FeuilletController extends AbstractController
 
         $data = [
             'id' => $feuillet->getId(),
-            'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
+            'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d H:i'),
             'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
             'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
             'fileUrl' => $feuillet->getFileUrl(),
@@ -316,7 +316,7 @@ class FeuilletController extends AbstractController
             $data[] = [
                 'id' => $feuillet->getId(),
                 'description' => $feuillet->getDescription(),
-                'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
+                'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d H:i'),
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
             ];
         }
@@ -344,7 +344,7 @@ class FeuilletController extends AbstractController
             $data[] = [
                 'id' => $feuillet->getId(),
                 'description' => $feuillet->getDescription(),
-                'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d'),
+                'celebrationDate' => $feuillet->getCelebrationDate()->format('Y-m-d H:i'),
                 'utilisateur' => $feuillet->getUtilisateur() ? $feuillet->getUtilisateur()->getId() : null,
                 'paroisse' => $feuillet->getParoisse() ? $feuillet->getParoisse()->getId() : null,
             ];
@@ -389,45 +389,28 @@ class FeuilletController extends AbstractController
     {
         $currentDate = new \DateTime();
 
-        // Récupérer la paroisse par ID
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($paroisseId);
 
         if (!$paroisse) {
             throw new NotFoundHttpException('Paroisse introuvable.');
         }
 
-        // Recherche des feuillets avant ou après la date actuelle
-        $feuillets = $this->feuilletRepository->findBy(
-            ['paroisse' => $paroisse],
-            ['celebrationDate' => 'ASC'] // Trier les feuillets par date de célébration
-        );
+        $feuillet = $this->feuilletRepository->findOneByNearestCelebrationDate($paroisse, $currentDate);
 
-        // Filtrer et trouver le feuillet le plus proche
-        $nearestFeuillet = null;
-        $smallestDiff = null;
-
-        foreach ($feuillets as $feuillet) {
-            $celebrationDate = $feuillet->getCelebrationDate();
-            $diff = $celebrationDate->diff($currentDate)->format('%r%a'); // Calculer la différence en jours
-
-            // Vérifier si c'est le plus proche
-            if ($smallestDiff === null || abs($diff) < abs($smallestDiff)) {
-                $smallestDiff = $diff;
-                $nearestFeuillet = $feuillet;
-            }
-        }
-
-        if (!$nearestFeuillet || !$nearestFeuillet->getFileUrl()) {
+        if (!$feuillet || !$feuillet->getFileUrl()) {
             throw new NotFoundHttpException('Aucun feuillet disponible pour cette paroisse ou l\'URL du fichier est manquante.');
         }
 
-        // Récupérer l'URL du fichier PDF
-        $fileUrl = $nearestFeuillet->getFileUrl();
+        $fileUrl = $feuillet->getFileUrl();
 
-        // Envoyer la tâche d'incrémentation à Messenger
-        $messageBus->dispatch(new IncrementFeuilletViewMessage($nearestFeuillet->getId()));
+        $paroisseNom = $paroisse->getNom();
+        $celebrationDate = $feuillet->getCelebrationDate()->format('Y-m-d');
 
-        // Télécharger le fichier PDF depuis l'URL
+        $safeParoisseNom = preg_replace('/[^A-Za-z0-9_-]/', '_', $paroisseNom);
+        $fileName = sprintf('%s_%s.pdf', $safeParoisseNom, $celebrationDate);
+
+        $messageBus->dispatch(new IncrementFeuilletViewMessage($feuillet->getId()));
+
         $client = new Client(['verify' => false]);
         try {
             $response = $client->get($fileUrl);
@@ -439,7 +422,7 @@ class FeuilletController extends AbstractController
 
         return new Response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="feuillet-nearest.pdf"',
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
         ]);
     }
 
