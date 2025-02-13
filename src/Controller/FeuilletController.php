@@ -354,7 +354,7 @@ class FeuilletController extends AbstractController
     }
 
     #[Route('/feuillet/{id}/pdf', name: 'show_feuillet_pdf', methods: ['GET'])]
-    public function showFeuilletPdf(int $id): Response
+    public function showFeuilletPdf(int $id, MessageBusInterface $messageBus): Response
     {
         $feuillet = $this->entityManager->getRepository(Feuillet::class)->find($id);
 
@@ -364,8 +364,8 @@ class FeuilletController extends AbstractController
 
         $fileUrl = $feuillet->getFileUrl();
 
-        // Incrémenter le compteur de vues
-        $feuillet->incrementViewCount();
+        // Envoyer la tâche d'incrémentation à Messenger
+        $messageBus->dispatch(new IncrementFeuilletViewMessage($feuillet->getId()));
         $this->entityManager->persist($feuillet);
         $this->entityManager->flush();
 
@@ -441,6 +441,29 @@ class FeuilletController extends AbstractController
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="feuillet-nearest.pdf"',
         ]);
+    }
+
+    #[Route('/api/feuillet/{id}/stats', name: 'get_feuillet_stats', methods: ['GET'])]
+    public function getFeuilletStats(int $id): JsonResponse
+    {
+        $feuillet = $this->feuilletRepository->find($id);
+
+        if (!$feuillet) {
+            return new JsonResponse(['error' => 'Feuillet introuvable'], 404);
+        }
+
+        $views = $feuillet->getFeuilletViews();
+
+        $data = [];
+        foreach ($views as $view) {
+            $data[] = [
+                'feuillet_id' => $view->getFeuillet()->getId(),
+                'paroisse_id' => $view->getParoisse()->getId(),
+                'viewed_at' => $view->getViewedAt()->format('Y-m-d H:i')
+            ];
+        }
+
+        return new JsonResponse($data);
     }
 
 }
