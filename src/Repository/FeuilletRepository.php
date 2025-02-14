@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Feuillet;
+use App\Entity\Paroisse;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -21,20 +22,26 @@ class FeuilletRepository extends ServiceEntityRepository
         parent::__construct($registry, Feuillet::class);
     }
 
-    //    /**
-    //     * @return Feuillet[] Returns an array of Feuillet objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('f')
-    //            ->andWhere('f.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('f.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    // FeuilletRepository.php
+
+    public function findOneByNearestCelebrationDate(Paroisse $paroisse, \DateTime $currentDate)
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = "
+            SELECT * FROM feuillet 
+            WHERE paroisse_id = :paroisse 
+            ORDER BY ABS(TIMESTAMPDIFF(SECOND, celebration_date, :currentDate)) ASC
+            LIMIT 1
+        ";
+        
+        $stmt = $conn->prepare($sql);  // Prépare la requête
+        $result = $stmt->executeQuery(['paroisse' => $paroisse->getId(), 'currentDate' => $currentDate->format('Y-m-d H:i')]);
+    
+        $row = $result->fetchAssociative(); // ✅ Fonctionne avec Result en Doctrine 3
+    
+        return $row ? $this->getEntityManager()->getRepository(Feuillet::class)->find($row['id']) : null;
+    }
+    
 
     //    public function findOneBySomeField($value): ?Feuillet
     //    {

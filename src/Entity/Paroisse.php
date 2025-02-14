@@ -60,11 +60,18 @@ class Paroisse
     #[ORM\Column(type: 'boolean')]
     private bool $cguAccepted = false;
 
+    /**
+     * @var Collection<int, FeuilletView>
+     */
+    #[ORM\OneToMany(targetEntity: FeuilletView::class, mappedBy: 'paroisse', orphanRemoval: true)]
+    private Collection $feuilletViews;
+
     public function __construct()
     {
         $this->eglises = new ArrayCollection();
         $this->Responsable = new ArrayCollection();
         $this->feuillets = new ArrayCollection();
+        $this->feuilletViews = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -266,6 +273,36 @@ class Paroisse
     public function setCguAccepted(bool $cguAccepted): self
     {
         $this->cguAccepted = $cguAccepted;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, FeuilletView>
+     */
+    public function getFeuilletViews(): Collection
+    {
+        return $this->feuilletViews;
+    }
+
+    public function addFeuilletView(FeuilletView $feuilletView): static
+    {
+        if (!$this->feuilletViews->contains($feuilletView)) {
+            $this->feuilletViews->add($feuilletView);
+            $feuilletView->setParoisse($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFeuilletView(FeuilletView $feuilletView): static
+    {
+        if ($this->feuilletViews->removeElement($feuilletView)) {
+            // set the owning side to null (unless already changed)
+            if ($feuilletView->getParoisse() === $this) {
+                $feuilletView->setParoisse(null);
+            }
+        }
 
         return $this;
     }

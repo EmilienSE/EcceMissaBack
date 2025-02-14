@@ -27,9 +27,12 @@ class IncrementFeuilletViewHandler
             return;
         }
 
-        // Incrémentation du compteur de vues
-        $feuillet->incrementViewCount();
-        $this->entityManager->persist($feuillet);
+        $feuilletView = new \App\Entity\FeuilletView();
+        $feuilletView->setFeuillet($feuillet);
+        $feuilletView->setParoisse($feuillet->getParoisse());
+        $feuilletView->setViewedAt(new \DateTimeImmutable());
+
+        $this->entityManager->persist($feuilletView);
         $this->entityManager->flush();
     }
 }
