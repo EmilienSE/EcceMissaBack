@@ -21,6 +21,11 @@ use Stripe\Customer;
 use Stripe\BillingPortal\Session as BillingSession;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use App\Entity\FeuilletView;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\Writer\PngWriter;
+use Endroid\QrCode\Color\Color;
+use Endroid\QrCode\RoundBlockSizeMode;
 
 class ParoisseController extends AbstractController
 {
@@ -310,6 +315,29 @@ class ParoisseController extends AbstractController
             $responsables[] = $responsable->getEmail();
         }
 
+        // Génération du QR Code
+        $routeUrl = $this->generateUrl(
+            'show_nearest_feuillet_pdf_by_paroisse',
+            ['paroisseId' => $paroisse->getId()],
+            UrlGeneratorInterface::ABSOLUTE_URL
+        );
+
+        $qrCode = new QrCode(
+            data: $routeUrl,
+            encoding: new Encoding('UTF-8'),
+            size: 300,
+            foregroundColor: new Color(38, 65, 66),
+            backgroundColor: new Color(255, 255, 255, 127),
+            margin: 10,
+            roundBlockSizeMode: RoundBlockSizeMode::Enlarge
+        );
+
+        $writer = new PngWriter();
+        $qrCodeResult = $writer->write($qrCode);
+
+        // Conversion en Base64
+        $qrCodeBase64 = base64_encode($qrCodeResult->getString());
+
         if($paroisse){
             return new JsonResponse([
                 'id' => $paroisse->getId(),
@@ -319,7 +347,8 @@ class ParoisseController extends AbstractController
                 'diocese_id' => $paroisse->getDiocese() ? $paroisse->getDiocese()->getId() : null,
                 'paiement_a_jour' => $paroisse->isPaiementAJour(),
                 'code_unique' => $paroisse->getCodeUnique(),
-                'responsables' => $responsables
+                'responsables' => $responsables,
+                'qr_code' => $qrCodeBase64
             ]);
         } else {
             return new JsonResponse('null', 200, [], true);
