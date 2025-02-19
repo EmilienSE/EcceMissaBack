@@ -95,6 +95,7 @@ class ParoisseController extends AbstractController
         $paroisse->setGPS($gps);
         $paroisse->setDiocese($diocese);
         $paroisse->addResponsable($user);
+        $user->setRoles(['ROLE_ADMIN', 'ROLE_EDITOR']); // Assign 'ROLE_ADMIN' and 'ROLE_EDITOR' to the user
         $paroisse->setPaiementAJour(false);
         $paroisse->setCguAccepted(true);
         $paroisse->setCgvAccepted(true);
@@ -120,8 +121,7 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
         }
 
-        // Check if the user is a responsible of the paroisse
-        if (!$paroisse->getResponsable()->contains($user)) {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
             return new JsonResponse(['error' => 'Non autorisé'], 403);
         }
 
@@ -255,6 +255,7 @@ class ParoisseController extends AbstractController
 
         // Ajouter l'utilisateur à la paroisse
         $paroisse->addResponsable($user);
+        $user->setRoles(array_unique(array_merge($user->getRoles(), ['ROLE_USER'])));
 
         $this->entityManager->persist($paroisse);
         $this->entityManager->flush();
@@ -444,7 +445,7 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
         }
 
-        if (!$paroisse->getResponsable()->contains($user)) {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
             return new JsonResponse(['error' => 'Non autorisé. Vous n\'êtes pas responsable de cette paroisse.'], 403);
         }
 
@@ -780,6 +781,39 @@ class ParoisseController extends AbstractController
         }
 
         return new JsonResponse($data);
+    }
+
+    #[Route('/api/paroisse/{paroisseId}/utilisateur/{userId}/changer_droits', name: 'changer_droits_utilisateur', methods: ['POST'])]
+    public function changerDroitsUtilisateur(int $paroisseId, int $userId, Request $request, UserInterface $user): JsonResponse
+    {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
+        $paroisse = $this->paroisseRepository->find($paroisseId);
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $utilisateur = $this->entityManager->getRepository(Utilisateur::class)->find($userId);
+        if (!$utilisateur) {
+            return new JsonResponse(['error' => 'Utilisateur introuvable'], 404);
+        }
+
+        if (!$paroisse->getResponsable()->contains($utilisateur)) {
+            return new JsonResponse(['error' => 'L\'utilisateur n\'est pas responsable de cette paroisse'], 403);
+        }
+
+        $nouveauxRoles = $request->request->get('roles');
+        if (empty($nouveauxRoles) || !is_array($nouveauxRoles)) {
+            return new JsonResponse(['error' => 'Rôles invalides'], 400);
+        }
+
+        $utilisateur->setRoles($nouveauxRoles);
+        $this->entityManager->persist($utilisateur);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['message' => 'Droits de l\'utilisateur mis à jour'], 200);
     }
 
 }
