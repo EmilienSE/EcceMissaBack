@@ -311,11 +311,6 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
         }
 
-        $responsables = [];
-        foreach($paroisse->getResponsable() as $responsable) {
-            $responsables[] = $responsable->getEmail();
-        }
-
         // Génération du QR Code
         $routeUrl = $this->generateUrl(
             'show_nearest_feuillet_pdf_by_paroisse',
@@ -348,7 +343,7 @@ class ParoisseController extends AbstractController
                 'diocese_id' => $paroisse->getDiocese() ? $paroisse->getDiocese()->getId() : null,
                 'paiement_a_jour' => $paroisse->isPaiementAJour(),
                 'code_unique' => $paroisse->getCodeUnique(),
-                'responsables' => $responsables,
+                'responsables' => count($paroisse->getResponsable()),
                 'qr_code' => $qrCodeBase64
             ]);
         } else {
@@ -783,6 +778,35 @@ class ParoisseController extends AbstractController
         return new JsonResponse($data);
     }
 
+    #[Route('/api/paroisse/utilisateurs', name: 'get_paroisse_utilisateurs', methods: ['GET'])]
+    public function getParoisseUtilisateurs(UserInterface $user): JsonResponse
+    {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
+        $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user->getId())->getParoisse();
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $utilisateurs = $paroisse->getResponsable();
+        $data = [];
+
+        foreach ($utilisateurs as $utilisateur) {
+            $data[] = [
+                'id' => $utilisateur->getId(),
+                'nom' => $utilisateur->getNom(),
+                'prenom' => $utilisateur->getPrenom(),
+                'email' => $utilisateur->getEmail(),
+                'roles' => $utilisateur->getRoles(),
+            ];
+        }
+
+        return new JsonResponse($data);
+    }
+
     #[Route('/api/paroisse/{paroisseId}/utilisateur/{userId}/changer_droits', name: 'changer_droits_utilisateur', methods: ['POST'])]
     public function changerDroitsUtilisateur(int $paroisseId, int $userId, Request $request, UserInterface $user): JsonResponse
     {
@@ -804,7 +828,7 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'L\'utilisateur n\'est pas responsable de cette paroisse'], 403);
         }
 
-        $nouveauxRoles = $request->request->get('roles');
+        $nouveauxRoles = json_decode($request->request->get('roles'), true);
         if (empty($nouveauxRoles) || !is_array($nouveauxRoles)) {
             return new JsonResponse(['error' => 'Rôles invalides'], 400);
         }
@@ -814,6 +838,38 @@ class ParoisseController extends AbstractController
         $this->entityManager->flush();
 
         return new JsonResponse(['message' => 'Droits de l\'utilisateur mis à jour'], 200);
+    }
+
+    #[Route('/api/paroisse/{paroisseId}/utilisateur/{userId}/supprimer', name: 'supprimer_responsable', methods: ['DELETE'])]
+    public function supprimerResponsable(int $paroisseId, int $userId, UserInterface $user): JsonResponse
+    {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
+        if ($user->getId() === $userId) {
+            return new JsonResponse(['error' => 'Vous ne pouvez pas vous supprimer vous-même'], 400);
+        }
+
+        $paroisse = $this->paroisseRepository->find($paroisseId);
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $utilisateur = $this->entityManager->getRepository(Utilisateur::class)->find($userId);
+        if (!$utilisateur) {
+            return new JsonResponse(['error' => 'Utilisateur introuvable'], 404);
+        }
+
+        if (!$paroisse->getResponsable()->contains($utilisateur)) {
+            return new JsonResponse(['error' => 'L\'utilisateur n\'est pas responsable de cette paroisse'], 403);
+        }
+
+        $paroisse->removeResponsable($utilisateur);
+        $this->entityManager->persist($paroisse);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['message' => 'Utilisateur supprimé de la paroisse'], 200);
     }
 
 }
