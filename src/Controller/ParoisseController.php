@@ -516,9 +516,10 @@ class ParoisseController extends AbstractController
         }
     }
 
-    #[Route('/paroisse/{id}/pdf', name: 'generate_paroisse_pdf', methods: ['GET'])]
-    public function generateParoissePdf(int $id): Response
+    #[Route('/paroisse/{id}/pdf/{format}', name: 'generate_paroisse_pdf', methods: ['GET'])]
+    public function generateParoissePdf(int $id, string $format = 'A5'): Response
     {
+        // Récupération de la paroisse
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($id);
 
         if (!$paroisse) {
@@ -532,8 +533,21 @@ class ParoisseController extends AbstractController
             UrlGeneratorInterface::ABSOLUTE_URL
         );
 
-        // Génération du PDF
-        $pdf = new \TCPDF('P', 'mm', 'A5');
+        // Définition du format de la page
+        $pageSizes = [
+            'A4' => 'A4',
+            'A3' => 'A3',
+            'A5' => 'A5',
+            'bookmark' => [50, 150],  // Marque-page (format personnalisé)
+        ];
+
+        // Vérification que le format est valide
+        if (!isset($pageSizes[$format])) {
+            throw new NotFoundHttpException('Format de PDF non supporté.');
+        }
+
+        // Création du PDF avec le bon format
+        $pdf = new \TCPDF('P', 'mm', $pageSizes[$format]);
         $oswald = \TCPDF_FONTS::addTTFfont('Oswald.ttf', 'TrueTypeUnicode', '', 96);
         $oswaldB = \TCPDF_FONTS::addTTFfont('Oswald-Bold.ttf', 'TrueTypeUnicode', '', 96);
         $roboto = \TCPDF_FONTS::addTTFfont('Roboto-Bold.ttf', 'TrueTypeUnicode', '', 96);
@@ -548,38 +562,154 @@ class ParoisseController extends AbstractController
 
         // Contenu du PDF
         $logo = 'logo.png'; // Remplacez par le chemin de votre logo
-        $pdf->Image($logo, 65, 10, 15, 15, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
 
-        // Ajouter le titre principal
-        $pdf->SetFont($oswald, '', 15);
-        $pdf->SetTextColor(38, 65, 66);
-        $pdf->Ln(20); // Saut de ligne
-        $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
-        $pdf->Ln(10);
-        $pdf->SetFont($oswaldB, 'B', 25);
-        $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
-        $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+        // Positionnement et taille du logo, et autres éléments en fonction du format
+        switch ($format) {
+            case 'A4':
+                // Logo positionné en haut du PDF
+                $pdf->Image($logo, 95, 10, 20, 20, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
 
-        // Générer le QR Code
-        $qrCodeUrl = $routeUrl; // Remplacez par l'URL de votre QR code
-        $style = [
-            'border' => 0,
-            'padding' => 4,
-            'fgcolor' => [38, 65, 66],
-            'bgcolor' => [255, 255, 255],
-        ];
-        $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 40, 80, 70, 70, $style, 'N');
+                // Titre
+                $pdf->SetFont($oswald, '', 20);
+                $pdf->SetTextColor(38, 65, 66);
+                $pdf->Ln(20); // Saut de ligne
+                $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+                $pdf->Ln(15);
+                $pdf->SetFont($oswaldB, 'B', 45);
+                $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
 
-        // Ajouter le texte explicatif
-        $pdf->Ln(10);
-        $pdf->SetFont($roboto, '', 20);
-        $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+                // QR Code
+                $qrCodeUrl = $routeUrl;
+                $style = [
+                    'border' => 0,
+                    'padding' => 4,
+                    'fgcolor' => [38, 65, 66],
+                    'bgcolor' => [255, 255, 255],
+                ];
+                $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 72.5, 105, 70, 70, $style, 'N');
 
-        // Ajouter le pied de page
-        $pdf->SetFont($oswald, '', 10);
-        $pdf->SetY(-20);
-        $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
-        $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+                // Texte explicatif
+                $pdf->Ln(20);
+                $pdf->SetFont($roboto, '', 30);
+                $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+
+                // Pied de page
+                $pdf->SetFont($oswald, '', 10);
+                $pdf->SetY(-30);
+                $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
+                $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+                break;
+
+            case 'A3':
+                // Positionnement du logo
+                $pdf->Image($logo, 135, 10, 30, 30, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+
+                // Titre
+                $pdf->SetFont($oswald, '', 30);
+                $pdf->SetTextColor(38, 65, 66);
+                $pdf->Ln(30); // Saut de ligne
+                $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+                $pdf->Ln(20);
+                $pdf->SetFont($oswaldB, 'B', 60);
+                $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+
+                // QR Code
+                $qrCodeUrl = $routeUrl;
+                $style = [
+                    'border' => 0,
+                    'padding' => 4,
+                    'fgcolor' => [38, 65, 66],
+                    'bgcolor' => [255, 255, 255],
+                ];
+                $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 120, 150, 120, 120, $style, 'N');
+
+                // Texte explicatif
+                $pdf->Ln(30);
+                $pdf->SetFont($roboto, '', 40);
+                $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+
+                // Pied de page
+                $pdf->SetFont($oswald, '', 20);
+                $pdf->SetY(-40);
+                $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
+                $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+                break;
+
+            case 'A5':
+                // Logo positionné plus haut pour un format A5 plus petit
+                $pdf->Image($logo, 65, 10, 15, 15, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+
+                // Titre
+                $pdf->SetFont($oswald, '', 15);
+                $pdf->SetTextColor(38, 65, 66);
+                $pdf->Ln(20); // Saut de ligne
+                $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+                $pdf->Ln(10);
+                $pdf->SetFont($oswaldB, 'B', 25);
+                $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+
+                // QR Code
+                $qrCodeUrl = $routeUrl;
+                $style = [
+                    'border' => 0,
+                    'padding' => 4,
+                    'fgcolor' => [38, 65, 66],
+                    'bgcolor' => [255, 255, 255],
+                ];
+                $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 40, 80, 70, 70, $style, 'N');
+
+                // Texte explicatif
+                $pdf->Ln(10);
+                $pdf->SetFont($roboto, '', 20);
+                $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+
+                // Pied de page
+                $pdf->SetFont($oswald, '', 10);
+                $pdf->SetY(-20);
+                $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
+                $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+                break;
+
+            case 'bookmark':
+                // Marque-page avec une disposition plus longue
+                $pdf->Image($logo, 17, 7, 15, 15, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+
+                // Titre
+                $pdf->SetFont($oswald, '', 7);
+                $pdf->SetTextColor(38, 65, 66);
+                $pdf->Ln(15); // Saut de ligne
+                $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+                $pdf->Ln(10);
+                $pdf->SetFont($oswaldB, 'B', 12);
+                $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+
+                // QR Code plus grand pour le format marque-page
+                $qrCodeUrl = $routeUrl;
+                $style = [
+                    'border' => 0,
+                    'padding' => 4,
+                    'fgcolor' => [38, 65, 66],
+                    'bgcolor' => [255, 255, 255],
+                ];
+                $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 10, 70, 50, 50, $style, 'N');
+
+                // Texte explicatif
+                $pdf->Ln(10);
+                $pdf->SetFont($roboto, '', 7);
+                $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+
+                // Pied de page
+                $pdf->SetFont($oswald, '', 8);
+                $pdf->SetY(-30);
+                $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'C');
+                $pdf->Ln(5);
+                $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'C');
+                break;
+        }
 
         // Envoi du PDF en réponse
         return new Response($pdf->Output('paroisse_qr_code.pdf', 'I'), 200, [
