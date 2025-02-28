@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Diocese;
 use App\Entity\Paroisse;
 use App\Entity\Utilisateur;
+use App\Entity\Feuillet;
 use App\Repository\ParoisseRepository;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,6 +22,11 @@ use Stripe\Customer;
 use Stripe\BillingPortal\Session as BillingSession;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use App\Entity\FeuilletView;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\Writer\PngWriter;
+use Endroid\QrCode\Color\Color;
+use Endroid\QrCode\RoundBlockSizeMode;
 
 class ParoisseController extends AbstractController
 {
@@ -90,6 +96,7 @@ class ParoisseController extends AbstractController
         $paroisse->setGPS($gps);
         $paroisse->setDiocese($diocese);
         $paroisse->addResponsable($user);
+        $user->setRoles(['ROLE_ADMIN', 'ROLE_EDITOR']); // Assign 'ROLE_ADMIN' and 'ROLE_EDITOR' to the user
         $paroisse->setPaiementAJour(false);
         $paroisse->setCguAccepted(true);
         $paroisse->setCgvAccepted(true);
@@ -115,8 +122,7 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
         }
 
-        // Check if the user is a responsible of the paroisse
-        if (!$paroisse->getResponsable()->contains($user)) {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
             return new JsonResponse(['error' => 'Non autorisé'], 403);
         }
 
@@ -250,6 +256,7 @@ class ParoisseController extends AbstractController
 
         // Ajouter l'utilisateur à la paroisse
         $paroisse->addResponsable($user);
+        $user->setRoles(array_unique(array_merge($user->getRoles(), ['ROLE_USER'])));
 
         $this->entityManager->persist($paroisse);
         $this->entityManager->flush();
@@ -305,10 +312,28 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
         }
 
-        $responsables = [];
-        foreach($paroisse->getResponsable() as $responsable) {
-            $responsables[] = $responsable->getEmail();
-        }
+        // Génération du QR Code
+        $routeUrl = $this->generateUrl(
+            'show_nearest_feuillet_pdf_by_paroisse',
+            ['paroisseId' => $paroisse->getId()],
+            UrlGeneratorInterface::ABSOLUTE_URL
+        );
+
+        $qrCode = new QrCode(
+            data: $routeUrl,
+            encoding: new Encoding('UTF-8'),
+            size: 300,
+            foregroundColor: new Color(38, 65, 66),
+            backgroundColor: new Color(255, 255, 255, 127),
+            margin: 10,
+            roundBlockSizeMode: RoundBlockSizeMode::Enlarge
+        );
+
+        $writer = new PngWriter();
+        $qrCodeResult = $writer->write($qrCode);
+
+        // Conversion en Base64
+        $qrCodeBase64 = base64_encode($qrCodeResult->getString());
 
         if($paroisse){
             return new JsonResponse([
@@ -319,7 +344,8 @@ class ParoisseController extends AbstractController
                 'diocese_id' => $paroisse->getDiocese() ? $paroisse->getDiocese()->getId() : null,
                 'paiement_a_jour' => $paroisse->isPaiementAJour(),
                 'code_unique' => $paroisse->getCodeUnique(),
-                'responsables' => $responsables
+                'responsables' => count($paroisse->getResponsable()),
+                'qr_code' => $qrCodeBase64
             ]);
         } else {
             return new JsonResponse('null', 200, [], true);
@@ -415,7 +441,7 @@ class ParoisseController extends AbstractController
             return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
         }
 
-        if (!$paroisse->getResponsable()->contains($user)) {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
             return new JsonResponse(['error' => 'Non autorisé. Vous n\'êtes pas responsable de cette paroisse.'], 403);
         }
 
@@ -487,9 +513,10 @@ class ParoisseController extends AbstractController
         }
     }
 
-    #[Route('/paroisse/{id}/pdf', name: 'generate_paroisse_pdf', methods: ['GET'])]
-    public function generateParoissePdf(int $id): Response
+    #[Route('/paroisse/{id}/pdf/{format}', name: 'generate_paroisse_pdf', methods: ['GET'])]
+    public function generateParoissePdf(int $id, string $format = 'A5'): Response
     {
+        // Récupération de la paroisse
         $paroisse = $this->entityManager->getRepository(Paroisse::class)->find($id);
 
         if (!$paroisse) {
@@ -503,8 +530,21 @@ class ParoisseController extends AbstractController
             UrlGeneratorInterface::ABSOLUTE_URL
         );
 
-        // Génération du PDF
-        $pdf = new \TCPDF('P', 'mm', 'A5');
+        // Définition du format de la page
+        $pageSizes = [
+            'A4' => 'A4',
+            'A3' => 'A3',
+            'A5' => 'A5',
+            'bookmark' => [50, 150],  // Marque-page (format personnalisé)
+        ];
+
+        // Vérification que le format est valide
+        if (!isset($pageSizes[$format])) {
+            throw new NotFoundHttpException('Format de PDF non supporté.');
+        }
+
+        // Création du PDF avec le bon format
+        $pdf = new \TCPDF('P', 'mm', $pageSizes[$format]);
         $oswald = \TCPDF_FONTS::addTTFfont('Oswald.ttf', 'TrueTypeUnicode', '', 96);
         $oswaldB = \TCPDF_FONTS::addTTFfont('Oswald-Bold.ttf', 'TrueTypeUnicode', '', 96);
         $roboto = \TCPDF_FONTS::addTTFfont('Roboto-Bold.ttf', 'TrueTypeUnicode', '', 96);
@@ -519,38 +559,154 @@ class ParoisseController extends AbstractController
 
         // Contenu du PDF
         $logo = 'logo.png'; // Remplacez par le chemin de votre logo
-        $pdf->Image($logo, 65, 10, 15, 15, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
 
-        // Ajouter le titre principal
-        $pdf->SetFont($oswald, '', 15);
-        $pdf->SetTextColor(38, 65, 66);
-        $pdf->Ln(20); // Saut de ligne
-        $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
-        $pdf->Ln(10);
-        $pdf->SetFont($oswaldB, 'B', 25);
-        $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
-        $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+        // Positionnement et taille du logo, et autres éléments en fonction du format
+        switch ($format) {
+            case 'A4':
+                // Logo positionné en haut du PDF
+                $pdf->Image($logo, 95, 10, 20, 20, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
 
-        // Générer le QR Code
-        $qrCodeUrl = $routeUrl; // Remplacez par l'URL de votre QR code
-        $style = [
-            'border' => 0,
-            'padding' => 4,
-            'fgcolor' => [38, 65, 66],
-            'bgcolor' => [255, 255, 255],
-        ];
-        $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 40, 80, 70, 70, $style, 'N');
+                // Titre
+                $pdf->SetFont($oswald, '', 20);
+                $pdf->SetTextColor(38, 65, 66);
+                $pdf->Ln(20); // Saut de ligne
+                $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+                $pdf->Ln(15);
+                $pdf->SetFont($oswaldB, 'B', 45);
+                $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
 
-        // Ajouter le texte explicatif
-        $pdf->Ln(10);
-        $pdf->SetFont($roboto, '', 20);
-        $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+                // QR Code
+                $qrCodeUrl = $routeUrl;
+                $style = [
+                    'border' => 0,
+                    'padding' => 4,
+                    'fgcolor' => [38, 65, 66],
+                    'bgcolor' => [255, 255, 255],
+                ];
+                $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 72.5, 105, 70, 70, $style, 'N');
 
-        // Ajouter le pied de page
-        $pdf->SetFont($oswald, '', 10);
-        $pdf->SetY(-20);
-        $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
-        $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+                // Texte explicatif
+                $pdf->Ln(20);
+                $pdf->SetFont($roboto, '', 30);
+                $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+
+                // Pied de page
+                $pdf->SetFont($oswald, '', 10);
+                $pdf->SetY(-30);
+                $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
+                $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+                break;
+
+            case 'A3':
+                // Positionnement du logo
+                $pdf->Image($logo, 135, 10, 30, 30, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+
+                // Titre
+                $pdf->SetFont($oswald, '', 30);
+                $pdf->SetTextColor(38, 65, 66);
+                $pdf->Ln(30); // Saut de ligne
+                $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+                $pdf->Ln(20);
+                $pdf->SetFont($oswaldB, 'B', 60);
+                $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+
+                // QR Code
+                $qrCodeUrl = $routeUrl;
+                $style = [
+                    'border' => 0,
+                    'padding' => 4,
+                    'fgcolor' => [38, 65, 66],
+                    'bgcolor' => [255, 255, 255],
+                ];
+                $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 120, 150, 120, 120, $style, 'N');
+
+                // Texte explicatif
+                $pdf->Ln(30);
+                $pdf->SetFont($roboto, '', 40);
+                $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+
+                // Pied de page
+                $pdf->SetFont($oswald, '', 20);
+                $pdf->SetY(-40);
+                $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
+                $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+                break;
+
+            case 'A5':
+                // Logo positionné plus haut pour un format A5 plus petit
+                $pdf->Image($logo, 65, 10, 15, 15, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+
+                // Titre
+                $pdf->SetFont($oswald, '', 15);
+                $pdf->SetTextColor(38, 65, 66);
+                $pdf->Ln(20); // Saut de ligne
+                $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+                $pdf->Ln(10);
+                $pdf->SetFont($oswaldB, 'B', 25);
+                $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+
+                // QR Code
+                $qrCodeUrl = $routeUrl;
+                $style = [
+                    'border' => 0,
+                    'padding' => 4,
+                    'fgcolor' => [38, 65, 66],
+                    'bgcolor' => [255, 255, 255],
+                ];
+                $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 40, 80, 70, 70, $style, 'N');
+
+                // Texte explicatif
+                $pdf->Ln(10);
+                $pdf->SetFont($roboto, '', 20);
+                $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+
+                // Pied de page
+                $pdf->SetFont($oswald, '', 10);
+                $pdf->SetY(-20);
+                $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'L');
+                $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'R');
+                break;
+
+            case 'bookmark':
+                // Marque-page avec une disposition plus longue
+                $pdf->Image($logo, 17, 7, 15, 15, '', '', 'T', false, 300, '', false, false, 0, false, false, false);
+
+                // Titre
+                $pdf->SetFont($oswald, '', 7);
+                $pdf->SetTextColor(38, 65, 66);
+                $pdf->Ln(15); // Saut de ligne
+                $pdf->Cell(0, 10, $paroisse->getNom(), 0, 1, 'C');
+                $pdf->Ln(10);
+                $pdf->SetFont($oswaldB, 'B', 12);
+                $pdf->Cell(0, 10, 'Suivez la messe depuis', 0, 1, 'C');
+                $pdf->Cell(0, 10, 'votre téléphone', 0, 1, 'C');
+
+                // QR Code plus grand pour le format marque-page
+                $qrCodeUrl = $routeUrl;
+                $style = [
+                    'border' => 0,
+                    'padding' => 4,
+                    'fgcolor' => [38, 65, 66],
+                    'bgcolor' => [255, 255, 255],
+                ];
+                $pdf->write2DBarcode($qrCodeUrl, 'QRCODE,H', 10, 70, 50, 50, $style, 'N');
+
+                // Texte explicatif
+                $pdf->Ln(10);
+                $pdf->SetFont($roboto, '', 7);
+                $pdf->Cell(0, 10, 'Scannez le QR Code, et voilà !', 0, 1, 'C');
+
+                // Pied de page
+                $pdf->SetFont($oswald, '', 8);
+                $pdf->SetY(-30);
+                $pdf->Cell(0, 10, 'Proposé par ECCE MISSA', 0, 0, 'C');
+                $pdf->Ln(5);
+                $pdf->Cell(0, 10, 'https://eccemissa.fr/', 0, 0, 'C');
+                break;
+        }
 
         // Envoi du PDF en réponse
         return new Response($pdf->Output('paroisse_qr_code.pdf', 'I'), 200, [
@@ -621,6 +777,153 @@ class ParoisseController extends AbstractController
         }
 
         return new JsonResponse($data);
+    }
+
+    #[Route('/api/paroisse/{paroisseId}/feuillets/latest_and_next', name: 'get_latest_and_next_feuillets', methods: ['GET'])]
+    public function getLatestAndNextFeuillets(int $paroisseId): JsonResponse
+    {
+        $paroisse = $this->paroisseRepository->find($paroisseId);
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $currentDate = new \DateTime();
+
+        // Récupérer le dernier feuillet en date
+        $latestFeuillet = $this->entityManager->getRepository(Feuillet::class)->createQueryBuilder('f')
+            ->where('f.paroisse = :paroisse')
+            ->andWhere('f.celebrationDate <= :currentDate')
+            ->setParameter('paroisse', $paroisse)
+            ->setParameter('currentDate', $currentDate)
+            ->orderBy('f.celebrationDate', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        // Récupérer le prochain feuillet à venir
+        $nextFeuillet = $this->entityManager->getRepository(Feuillet::class)->createQueryBuilder('f')
+            ->where('f.paroisse = :paroisse')
+            ->andWhere('f.celebrationDate > :currentDate')
+            ->setParameter('paroisse', $paroisse)
+            ->setParameter('currentDate', $currentDate)
+            ->orderBy('f.celebrationDate', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        $data = [
+            'latest_feuillet' => $latestFeuillet ? [
+                'id' => $latestFeuillet->getId(),
+                'description' => $latestFeuillet->getDescription(),
+                'celebrationDate' => $latestFeuillet->getCelebrationDate()->format('Y-m-d H:i'),
+                'fileUrl' => $latestFeuillet->getFileUrl(),
+                'viewCount' => $latestFeuillet->getViewCount()
+            ] : null,
+            'next_feuillet' => $nextFeuillet ? [
+                'id' => $nextFeuillet->getId(),
+                'description' => $nextFeuillet->getDescription(),
+                'celebrationDate' => $nextFeuillet->getCelebrationDate()->format('Y-m-d H:i'),
+                'fileUrl' => $nextFeuillet->getFileUrl(),
+                'viewCount' => $nextFeuillet->getViewCount()
+            ] : null,
+        ];
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/paroisse/utilisateurs', name: 'get_paroisse_utilisateurs', methods: ['GET'])]
+    public function getParoisseUtilisateurs(UserInterface $user): JsonResponse
+    {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
+        $paroisse = $this->entityManager->getRepository(Utilisateur::class)->find($user->getId())->getParoisse();
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $utilisateurs = $paroisse->getResponsable();
+        $data = [];
+
+        foreach ($utilisateurs as $utilisateur) {
+            $data[] = [
+                'id' => $utilisateur->getId(),
+                'nom' => $utilisateur->getNom(),
+                'prenom' => $utilisateur->getPrenom(),
+                'email' => $utilisateur->getEmail(),
+                'roles' => $utilisateur->getRoles(),
+            ];
+        }
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/paroisse/{paroisseId}/utilisateur/{userId}/changer_droits', name: 'changer_droits_utilisateur', methods: ['POST'])]
+    public function changerDroitsUtilisateur(int $paroisseId, int $userId, Request $request, UserInterface $user): JsonResponse
+    {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
+        $paroisse = $this->paroisseRepository->find($paroisseId);
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $utilisateur = $this->entityManager->getRepository(Utilisateur::class)->find($userId);
+        if (!$utilisateur) {
+            return new JsonResponse(['error' => 'Utilisateur introuvable'], 404);
+        }
+
+        if (!$paroisse->getResponsable()->contains($utilisateur)) {
+            return new JsonResponse(['error' => 'L\'utilisateur n\'est pas responsable de cette paroisse'], 403);
+        }
+
+        $nouveauxRoles = json_decode($request->request->get('roles'), true);
+        if (empty($nouveauxRoles) || !is_array($nouveauxRoles)) {
+            return new JsonResponse(['error' => 'Rôles invalides'], 400);
+        }
+
+        $utilisateur->setRoles($nouveauxRoles);
+        $this->entityManager->persist($utilisateur);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['message' => 'Droits de l\'utilisateur mis à jour'], 200);
+    }
+
+    #[Route('/api/paroisse/{paroisseId}/utilisateur/{userId}/supprimer', name: 'supprimer_responsable', methods: ['DELETE'])]
+    public function supprimerResponsable(int $paroisseId, int $userId, UserInterface $user): JsonResponse
+    {
+        if (!in_array('ROLE_ADMIN', $user->getRoles())) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
+        if ($user->getId() === $userId) {
+            return new JsonResponse(['error' => 'Vous ne pouvez pas vous supprimer vous-même'], 400);
+        }
+
+        $paroisse = $this->paroisseRepository->find($paroisseId);
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $utilisateur = $this->entityManager->getRepository(Utilisateur::class)->find($userId);
+        if (!$utilisateur) {
+            return new JsonResponse(['error' => 'Utilisateur introuvable'], 404);
+        }
+
+        if (!$paroisse->getResponsable()->contains($utilisateur)) {
+            return new JsonResponse(['error' => 'L\'utilisateur n\'est pas responsable de cette paroisse'], 403);
+        }
+
+        $paroisse->removeResponsable($utilisateur);
+        $this->entityManager->persist($paroisse);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['message' => 'Utilisateur supprimé de la paroisse'], 200);
     }
 
 }

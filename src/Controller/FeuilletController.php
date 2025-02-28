@@ -114,6 +114,10 @@ class FeuilletController extends AbstractController
     #[Route('/api/feuillet', name: 'add_feuillet', methods: ['POST'])]
     public function addFeuillet(Request $request, UserInterface $user): JsonResponse
     {
+        if (!array_intersect($user->getRoles(), ['ROLE_EDITOR', 'ROLE_ADMIN'])) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
         $celebrationDate = $request->request->get('celebration_date') ?? null;
         $paroisseId = $request->request->get('paroisse_id') ?? null;
 
@@ -181,6 +185,10 @@ class FeuilletController extends AbstractController
     #[Route('/api/feuillet/{id}', name: 'update_feuillet', methods: ['POST'])]
     public function updateFeuillet(Request $request, int $id, UserInterface $user): JsonResponse
     {
+        if (!array_intersect($user->getRoles(), ['ROLE_EDITOR', 'ROLE_ADMIN'])) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
         $feuillet = $this->feuilletRepository->find($id);
 
         if (!$feuillet) {
@@ -260,6 +268,10 @@ class FeuilletController extends AbstractController
     #[Route('/api/feuillet/{id}', name: 'delete_feuillet', methods: ['DELETE'])]
     public function deleteFeuillet(int $id, UserInterface $user): JsonResponse
     {
+        if (!array_intersect($user->getRoles(), ['ROLE_EDITOR', 'ROLE_ADMIN'])) {
+            return new JsonResponse(['error' => 'Non autorisé'], 403);
+        }
+
         $feuillet = $this->feuilletRepository->find($id);
 
         if (!$feuillet) {
