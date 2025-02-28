@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Diocese;
 use App\Entity\Paroisse;
 use App\Entity\Utilisateur;
+use App\Entity\Feuillet;
 use App\Repository\ParoisseRepository;
 use App\Service\EmailService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -774,6 +775,59 @@ class ParoisseController extends AbstractController
                 'viewed_at' => $view->getViewedAt()->format('Y-m-d H:i')
             ];
         }
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/api/paroisse/{paroisseId}/feuillets/latest_and_next', name: 'get_latest_and_next_feuillets', methods: ['GET'])]
+    public function getLatestAndNextFeuillets(int $paroisseId): JsonResponse
+    {
+        $paroisse = $this->paroisseRepository->find($paroisseId);
+
+        if (!$paroisse) {
+            return new JsonResponse(['error' => 'Paroisse introuvable'], 404);
+        }
+
+        $currentDate = new \DateTime();
+
+        // Récupérer le dernier feuillet en date
+        $latestFeuillet = $this->entityManager->getRepository(Feuillet::class)->createQueryBuilder('f')
+            ->where('f.paroisse = :paroisse')
+            ->andWhere('f.celebrationDate <= :currentDate')
+            ->setParameter('paroisse', $paroisse)
+            ->setParameter('currentDate', $currentDate)
+            ->orderBy('f.celebrationDate', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        // Récupérer le prochain feuillet à venir
+        $nextFeuillet = $this->entityManager->getRepository(Feuillet::class)->createQueryBuilder('f')
+            ->where('f.paroisse = :paroisse')
+            ->andWhere('f.celebrationDate > :currentDate')
+            ->setParameter('paroisse', $paroisse)
+            ->setParameter('currentDate', $currentDate)
+            ->orderBy('f.celebrationDate', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        $data = [
+            'latest_feuillet' => $latestFeuillet ? [
+                'id' => $latestFeuillet->getId(),
+                'description' => $latestFeuillet->getDescription(),
+                'celebrationDate' => $latestFeuillet->getCelebrationDate()->format('Y-m-d H:i'),
+                'fileUrl' => $latestFeuillet->getFileUrl(),
+                'viewCount' => $latestFeuillet->getViewCount()
+            ] : null,
+            'next_feuillet' => $nextFeuillet ? [
+                'id' => $nextFeuillet->getId(),
+                'description' => $nextFeuillet->getDescription(),
+                'celebrationDate' => $nextFeuillet->getCelebrationDate()->format('Y-m-d H:i'),
+                'fileUrl' => $nextFeuillet->getFileUrl(),
+                'viewCount' => $nextFeuillet->getViewCount()
+            ] : null,
+        ];
 
         return new JsonResponse($data);
     }
